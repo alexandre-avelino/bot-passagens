@@ -1,0 +1,26 @@
+origem: CGB
+destinos:
+  - GRU
+  - CGH
+  # - VCP  # avaliar incluir; Azul costuma ter bons preços CGB-VCP
+
+periodo:
+  inicio: 2026-09-29
+  fim: 2026-10-13
+
+dias_obrigatorios:
+  - 2026-10-06
+margem_adjacente: 1   # exige que a janela cubra pelo menos +-1 dia ao redor do dia obrigatorio
+
+duracao:
+  minima: 4
+  maxima: 7
+
+passageiros: 1
+
+alertas:
+  preco_maximo: 900        # em R$, ida + volta -- ajuste depois de ver os precos reais
+  queda_percentual: 10
+  novo_menor_preco: true
+
+resumo_diario: "08:00"     # horario de Cuiaba (informativo; quem controla o horario real e o cron do workflow)

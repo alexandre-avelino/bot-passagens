@@ -1,9 +1,11 @@
 """Gerador de combinacoes (ida, volta) validas para a viagem monitorada.
 
-Regra central do projeto: a janela [ida, volta] precisa cobrir cada dia
-obrigatorio configurado E pelo menos um dia adjacente a ele (antes ou depois,
-dentro da margem configurada). Isso evita, por exemplo, uma viagem que pousa
-e decola no mesmo dia obrigatorio sem nenhuma folga ao redor.
+Regra central do projeto: cada dia obrigatorio configurado precisa ser um dia
+inteiro no destino, nunca o dia de embarque ou desembarque. Ou seja, a janela
+[ida, volta] precisa ter o dia obrigatorio estritamente no meio, com pelo
+menos `margem_adjacente` dias de folga tanto antes quanto depois dele. Isso
+evita, por exemplo, uma viagem que pousa ou decola no dia que precisa
+obrigatoriamente ser passado no destino.
 """
 
 from dataclasses import dataclass
@@ -22,16 +24,8 @@ class Janela:
 
 
 def _cobre_dia_obrigatorio(ida: date, volta: date, dia_obrigatorio: date, margem_adjacente: int) -> bool:
-    if not (ida <= dia_obrigatorio <= volta):
-        return False
-    if margem_adjacente <= 0:
-        return True
-    for deslocamento in range(1, margem_adjacente + 1):
-        vizinho_antes = dia_obrigatorio - timedelta(days=deslocamento)
-        vizinho_depois = dia_obrigatorio + timedelta(days=deslocamento)
-        if (ida <= vizinho_antes <= volta) or (ida <= vizinho_depois <= volta):
-            return True
-    return False
+    folga = timedelta(days=margem_adjacente)
+    return ida <= dia_obrigatorio - folga and volta >= dia_obrigatorio + folga
 
 
 def gerar_combinacoes(
@@ -45,8 +39,9 @@ def gerar_combinacoes(
     """Retorna todas as janelas (ida, volta) dentro do periodo monitorado que:
 
     - tem duracao entre duracao_minima e duracao_maxima (inclusive);
-    - cobrem TODOS os dias em dias_obrigatorios, cada um com pelo menos um
-      dia adjacente dentro de margem_adjacente.
+    - tem TODOS os dias em dias_obrigatorios estritamente no meio da janela
+      (nunca no dia de ida ou de volta), com pelo menos margem_adjacente dias
+      de folga antes e depois de cada um.
     """
     if duracao_minima > duracao_maxima:
         raise ValueError("duracao_minima nao pode ser maior que duracao_maxima")

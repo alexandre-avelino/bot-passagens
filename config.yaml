@@ -10,7 +10,7 @@ periodo:
 
 dias_obrigatorios:
   - 2026-10-06
-margem_adjacente: 1   # exige que a janela cubra pelo menos +-1 dia ao redor do dia obrigatorio
+margem_adjacente: 1   # dia obrigatorio nunca pode ser dia de ida/volta; exige pelo menos 1 dia de folga antes E depois dele
 
 duracao:
   minima: 4

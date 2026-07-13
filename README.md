@@ -68,8 +68,9 @@ Abra `config.yaml` e ajuste:
 
 - `origem` / `destinos`: codigos de aeroporto (IATA), ex: `CGB`, `GRU`, `CGH`.
 - `periodo`: janela de datas que o bot vai varrer.
-- `dias_obrigatorios` + `margem_adjacente`: dia(s) que a viagem precisa
-  cobrir, e quantos dias de folga ao redor sao exigidos.
+- `dias_obrigatorios` + `margem_adjacente`: dia(s) que precisam ser passados
+  inteiros no destino (nunca dia de embarque/desembarque). `margem_adjacente`
+  e quantos dias de folga sao exigidos antes E depois de cada um desses dias.
 - `duracao.minima` / `duracao.maxima`: duracao da estadia, em dias.
 - `alertas.preco_maximo`: teto de preco (usado nas proximas fases).
 

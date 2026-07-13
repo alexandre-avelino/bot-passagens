@@ -18,6 +18,7 @@ from bot_passagens.telegram import enviar_mensagem
 
 DELAY_ENTRE_BUSCAS_SEGUNDOS = 2.5
 TOP_N = 3
+MEDALHAS = ["🥇", "🥈", "🥉"]
 
 
 def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
@@ -55,28 +56,41 @@ def _formatar_preco(valor: float) -> str:
     return f"R$ {parte_inteira},{parte_decimal}"
 
 
+def _formatar_escalas(escalas: int) -> str:
+    if escalas == 0:
+        return "voo direto ✈️"
+    if escalas == 1:
+        return "1 escala"
+    return f"{escalas} escalas"
+
+
+def _rotulo_posicao(indice: int) -> str:
+    if indice < len(MEDALHAS):
+        return MEDALHAS[indice]
+    return f"{indice + 1}º"
+
+
 def _formatar_mensagem(voos_top: list[Voo], total_buscas: int, erros: list[str]) -> str:
     agora = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
 
     if not voos_top:
-        linhas = ["*Bot de passagens*", "", "Nenhum voo encontrado nas janelas monitoradas desta vez."]
+        linhas = ["✈️ *Bot de passagens*", "", "🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."]
     else:
-        linhas = [f"*Top {len(voos_top)} janelas mais baratas*", ""]
-        for i, voo in enumerate(voos_top, start=1):
+        linhas = [f"✈️ *Top {len(voos_top)} janelas mais baratas*", ""]
+        for i, voo in enumerate(voos_top):
             noites = (voo.volta - voo.ida).days
-            escalas_texto = "direto" if voo.escalas == 0 else f"{voo.escalas} escala(s)"
             linhas.append(
-                f"{i}. {voo.origem} -> {voo.destino} | "
-                f"{voo.ida.strftime('%d/%m')} a {voo.volta.strftime('%d/%m')} ({noites} noites)\n"
-                f"   {voo.companhia} - {_formatar_preco(voo.preco)} - {escalas_texto} (ida)\n"
-                f"   {voo.link}"
+                f"{_rotulo_posicao(i)} {voo.origem} → {voo.destino} · "
+                f"{voo.ida.strftime('%d/%m')} → {voo.volta.strftime('%d/%m')} ({noites} noites)\n"
+                f"💰 *{_formatar_preco(voo.preco)}* — {voo.companhia} — {_formatar_escalas(voo.escalas)}\n"
+                f"🔗 [Ver oferta no Google Voos]({voo.link})"
             )
+            linhas.append("")
 
-    linhas.append("")
-    linhas.append(f"_{total_buscas} janelas verificadas em {agora}._")
+    linhas.append(f"🔎 {total_buscas} janelas verificadas · 🕒 {agora}")
 
     if erros:
-        linhas.append(f"_Aviso: {len(erros)} busca(s) falharam nesta execucao (ver logs do Actions)._")
+        linhas.append(f"⚠️ {len(erros)} busca(s) falharam nesta execucao (ver logs do Actions).")
 
     return "\n".join(linhas)
 

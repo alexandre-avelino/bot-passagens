@@ -19,7 +19,7 @@ duracao:
 passageiros: 1
 
 alertas:
-  preco_maximo: 900        # em R$, ida + volta -- ajuste depois de ver os precos reais
+  preco_maximo: 500        # em R$, ida + volta -- dispara alerta imediato quando achar preco <= esse valor
   queda_percentual: 10
   novo_menor_preco: true
 

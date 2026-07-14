@@ -2,10 +2,12 @@ name: Monitorar passagens
 
 on:
   schedule:
-    # Horarios em UTC. Cuiaba (UTC-4) = 8h e 20h.
+    # Horarios em UTC. Cuiaba (UTC-4) = ~8h e ~20h.
     # Reduzido de 5x para 2x/dia para diminuir o risco de rate limit no Google Voos.
-    - cron: "0 12 * * *"
-    - cron: "0 0 * * *"
+    # Minuto 5 (nao 0) de proposito: o GitHub atrasa/pula com mais frequencia
+    # execucoes agendadas bem na hora cheia, por ser o horario de pico.
+    - cron: "5 12 * * *"
+    - cron: "5 0 * * *"
   workflow_dispatch: {}
 
 jobs:

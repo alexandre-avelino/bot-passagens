@@ -19,7 +19,7 @@ from datetime import date, datetime, timezone
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
-from bot_passagens import alerta, historico
+from bot_passagens import alerta, dashboard, historico
 from bot_passagens.alerta import Alerta
 from bot_passagens.config import Config, carregar_config
 from bot_passagens.dates import Janela, gerar_combinacoes
@@ -172,6 +172,7 @@ def main() -> None:
         # que ja estava no historico antes desta execucao.
         alertas_disparados = alerta.avaliar(conn, config.alertas, todos_os_voos, agora)
         historico.registrar_voos(conn, todos_os_voos, timestamp=agora)
+        dashboard.gerar_dashboard(conn, config.origem)
 
         if alertas_disparados:
             mensagem_alerta = _formatar_mensagem_alerta(alertas_disparados)

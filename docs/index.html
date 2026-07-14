@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor de passagens — CGB</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .meta { color: #666; font-size: 0.9rem; margin-bottom: 24px; }
+  .grafico-container { position: relative; width: 100%; height: 420px; }
+</style>
+</head>
+<body>
+  <h1>✈️ Monitor de passagens — CGB</h1>
+  <p class="meta">657 buscas registradas · atualizado em 14/07/2026 13:17 UTC</p>
+  <div class="grafico-container">
+    <canvas id="grafico"></canvas>
+  </div>
+  <script>
+    new Chart(document.getElementById('grafico'), {
+      type: 'line',
+      data: {
+        labels: ["2026-07-14"],
+        datasets: [{"label": "CGB \u2192 CGH", "data": [967.0], "borderColor": "#2563eb", "spanGaps": true, "tension": 0.2}, {"label": "CGB \u2192 GRU", "data": [585.0], "borderColor": "#dc2626", "spanGaps": true, "tension": 0.2}]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { title: { display: true, text: 'Menor preco do dia (R$)' } } }
+      }
+    });
+  </script>
+</body>
+</html>

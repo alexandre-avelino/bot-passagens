@@ -42,14 +42,14 @@ jobs:
           RESUMO_DIARIO: ${{ github.event.schedule == '5 12 * * *' || (github.event_name == 'workflow_dispatch' && inputs.resumo) }}
         run: python -m bot_passagens.main
 
-      - name: Salvar historico de precos no repositorio
+      - name: Salvar historico de precos e dashboard no repositorio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add historico.db
+          git add historico.db docs/index.html
           if git diff --cached --quiet; then
-            echo "Sem mudancas no historico."
+            echo "Sem mudancas no historico ou no dashboard."
           else
-            git commit -m "Atualiza historico de precos"
+            git commit -m "Atualiza historico de precos e dashboard"
             git push
           fi

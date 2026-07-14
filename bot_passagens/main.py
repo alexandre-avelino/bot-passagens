@@ -17,6 +17,7 @@ import sys
 import time
 from datetime import date, datetime, timezone
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 from bot_passagens import alerta, historico
 from bot_passagens.alerta import Alerta
@@ -31,6 +32,7 @@ from bot_passagens.telegram import enviar_mensagem, enviar_mensagem_longa
 DELAY_ENTRE_BUSCAS_SEGUNDOS = 2.5
 TOP_N = 3
 MEDALHAS = ["🥇", "🥈", "🥉"]
+FUSO_HORARIO_LOCAL = ZoneInfo("America/Cuiaba")
 
 
 def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
@@ -105,7 +107,7 @@ def _formatar_mensagem_alerta(alertas_disparados: List[Alerta]) -> str:
 def _formatar_mensagem_resumo(
     voos_top: List[Voo], total_buscas: int, menor_geral: Optional[dict], erros: List[str]
 ) -> str:
-    agora = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
+    agora = datetime.now(timezone.utc).astimezone(FUSO_HORARIO_LOCAL).strftime("%d/%m/%Y %H:%M")
 
     if not voos_top:
         linhas = ["📋 *Resumo diario*", "", "🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."]
@@ -124,7 +126,7 @@ def _formatar_mensagem_resumo(
             )
             linhas.append("")
 
-    linhas.append(f"🔎 {total_buscas} janelas verificadas · 🕒 {agora}")
+    linhas.append(f"🔎 {total_buscas} janelas verificadas · 🕒 {agora} (Cuiabá)")
 
     if erros:
         linhas.append(f"⚠️ {len(erros)} busca(s) falharam nesta execucao (ver logs do Actions).")

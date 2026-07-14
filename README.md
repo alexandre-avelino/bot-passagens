@@ -116,8 +116,7 @@ nada no Telegram (ver secao abaixo).
 O agendador nativo do GitHub Actions (`schedule` no workflow) e conhecido por
 falhar em disparar workflows automaticamente de vez em quando -- e mais
 comum em repositorios novos ou pouco movimentados, e nao tem garantia
-oficial de horario. Isso ja aconteceu com o nosso (a execucao das 8h nao
-disparou sozinha em pelo menos uma ocasiao). Para nao depender so disso, dá
+oficial de horario. Isso ja aconteceu com o nosso mais de uma vez. Para nao depender so disso, dá
 pra usar um servico externo gratuito que chama a API do GitHub nos horarios
 certos, forcando o disparo por fora.
 
@@ -134,7 +133,8 @@ certos, forcando o disparo por fora.
    - Copie o token gerado (comeca com `github_pat_...`) — so aparece uma vez.
 2. Crie uma conta gratuita em <https://cron-job.org> (ou outro servico
    equivalente de sua preferencia).
-3. Crie **dois** cronjobs, um para cada horario:
+3. Crie **um unico cronjob** cobrindo os dois horarios (a tela de agendamento
+   tem uma opcao **"Custom"** com selecao multipla):
    - **URL**: `https://api.github.com/repos/alexandre-avelino/bot-passagens/actions/workflows/monitor.yml/dispatches`
    - **Metodo**: `POST`
    - **Headers**:
@@ -142,8 +142,13 @@ certos, forcando o disparo por fora.
      - `Accept: application/vnd.github+json`
      - `Content-Type: application/json`
    - **Body** (JSON): `{"ref":"main"}`
-   - **Horario do 1º cronjob**: 12:05 UTC (8h05 em Cuiaba)
-   - **Horario do 2º cronjob**: 00:05 UTC (20h05 em Cuiaba)
+   - **Schedule -> Custom**:
+     - **Timezone do job**: `America/Cuiaba` (se o cron-job.org perguntar)
+     - **Hours**: selecione `8` e `20` (clique em um, segure Cmd e clique no
+       outro para selecionar os dois sem desmarcar)
+     - **Minutes**: selecione so `5`
+     - Days of month / Days of week / Months: deixe todos selecionados
+       (padrao = todo dia, todo mes)
 4. Use o botao de "test run" do cron-job.org pra confirmar que disparou uma
    execucao no GitHub (confira na aba **Actions** do repositorio).
 

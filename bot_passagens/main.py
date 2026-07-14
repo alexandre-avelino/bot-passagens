@@ -90,7 +90,7 @@ def _bloco_voo(rotulo: str, voo: Voo) -> str:
 
 def _formatar_mensagem_alerta(alertas_disparados: List[Alerta]) -> str:
     linhas = ["🚨 *Alerta de preco!*", ""]
-    for item in alertas_disparados:
+    for item in sorted(alertas_disparados, key=lambda a: a.voo.preco):
         linhas.append(_bloco_voo("📍", item.voo))
         for motivo in item.motivos:
             linhas.append(f"    • {motivo}")

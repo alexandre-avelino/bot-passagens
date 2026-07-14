@@ -83,6 +83,7 @@ def _formatar_mensagem(voos_top: list[Voo], total_buscas: int, erros: list[str])
                 f"{_rotulo_posicao(i)} {voo.origem} → {voo.destino} · "
                 f"{voo.ida.strftime('%d/%m')} → {voo.volta.strftime('%d/%m')} ({noites} noites)\n"
                 f"💰 *{_formatar_preco(voo.preco)}* — {voo.companhia} — {_formatar_escalas(voo.escalas)}\n"
+                f"🕐 {voo.partida} → {voo.chegada} (ida)\n"
                 f"🔗 [Ver oferta no Google Voos]({voo.link})"
             )
             linhas.append("")

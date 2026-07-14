@@ -7,13 +7,14 @@ dia. Roda de graca no GitHub Actions, 2x por dia.
 
 Este README assume que voce nao mexe com codigo. Siga na ordem.
 
-## O que ja esta pronto (Fases 1, 2 e 3)
+## O que ja esta pronto (Fases 1, 2, 3 e parte da 4)
 
 - Gerador de combinacoes de datas (ida/volta) respeitando a regra do dia
   obrigatorio, com testes automatizados.
 - Busca real de precos (Google Voos) via a biblioteca `fast-flights`,
   incluindo horario de ida/chegada e escalas.
-- Workflow do GitHub Actions ja configurado para rodar 2x por dia.
+- Workflow do GitHub Actions ja configurado para rodar 2x por dia (mais um
+  cron externo de fallback, ver secao "Passo 7").
 - Historico de precos em SQLite (`historico.db`), commitado de volta no
   repositorio a cada execucao — todo voo encontrado fica registrado, nao so
   o que aparece nas mensagens.
@@ -21,6 +22,13 @@ Este README assume que voce nao mexe com codigo. Siga na ordem.
   novo menor preco) e resumo diario com o melhor preco ja visto. Ver a secao
   "Alertas e resumo diario" abaixo — o comportamento de quando o bot manda
   mensagem mudou nesta fase.
+- Dashboard publico com grafico do menor preco por dia e por destino:
+  **<https://alexandre-avelino.github.io/bot-passagens/>** (ver secao
+  "Dashboard" abaixo).
+
+Ainda **nao** existem comandos interativos no Telegram (`/hoje`,
+`/historico`, `/config`) — essa parte da Fase 4 exige um servidor sempre
+ligado (ver conversa sobre hospedagem) e ainda nao foi implementada.
 
 ## Passo 1 — Criar o bot no Telegram
 
@@ -44,9 +52,14 @@ Este README assume que voce nao mexe com codigo. Siga na ordem.
 
 ## Passo 3 — Criar o repositorio no GitHub
 
-1. Crie um repositorio **privado** no GitHub (recomendado, ja que o codigo
-   fica publico se o repo for publico — os precos e as datas nao sao segredo,
-   mas os secrets do passo 4 nunca ficam expostos de qualquer forma).
+1. Crie um repositorio no GitHub — **privado ou publico**, a sua escolha.
+   Os secrets do Passo 4 nunca ficam expostos de qualquer forma, seja qual
+   for a visibilidade. Se quiser publicar um dashboard (ver secao
+   "Dashboard" abaixo) via GitHub Pages, o repositorio **precisa ser
+   publico** no plano gratuito do GitHub (Pages privado exige plano pago).
+   Nesse caso, suas datas de viagem e o historico de precos ficam visiveis
+   a qualquer um — nao ha dado sensivel nisso (so aeroportos, datas e
+   precos), mas vale saber antes de decidir.
 2. No terminal, dentro desta pasta (`bot-passagens`), rode:
 
    ```bash
@@ -167,11 +180,27 @@ proprio repositorio — o workflow do Actions commita esse arquivo de volta
 automaticamente depois de cada busca. Isso significa que:
 
 - o repositorio vai acumular commits automaticos com a mensagem "Atualiza
-  historico de precos" (2x por dia); isso e esperado, nao precisa fazer nada;
+  historico de precos e dashboard" (2x por dia); isso e esperado, nao
+  precisa fazer nada;
 - se quiser consultar o historico manualmente, da pra abrir `historico.db`
   com qualquer visualizador de SQLite (ex: extensao "SQLite Viewer" no
   VS Code) ou rodar `sqlite3 historico.db "select * from buscas"` no
   terminal.
+
+## Dashboard
+
+A cada execucao, o bot gera `docs/index.html` com um grafico do menor preco
+encontrado por dia, uma linha por destino. Publicado de graca via GitHub
+Pages (exige repositorio publico, ver Passo 3):
+
+**<https://alexandre-avelino.github.io/bot-passagens/>**
+
+O grafico comeca com poucos pontos (um por dia desde que o bot rodou pela
+primeira vez) e vai ganhando historico com o tempo. Se voce trocar de
+usuario/repositorio, o link muda para
+`https://SEU_USUARIO.github.io/SEU_REPOSITORIO/` — nao precisa configurar
+nada alem do que ja esta no workflow, GitHub Pages atualiza sozinho a cada
+push no `docs/index.html`.
 
 ## Alertas e resumo diario
 
@@ -228,7 +257,9 @@ detalhe nos logs do Actions. Se isso comecar a acontecer, tente, em ordem:
 
 ## Proximas fases (ainda nao implementadas)
 
-- **Fase 4** (opcional): comandos interativos no Telegram (`/hoje`,
-  `/historico`, `/config`) e dashboard com grafico.
+- **Fase 4, parte 2** (opcional): comandos interativos no Telegram (`/hoje`,
+  `/historico`, `/config`). Exige decidir uma hospedagem sempre ligada
+  primeiro (o dashboard e o resto do bot continuam gratis; isso especifico
+  nao da pra fazer so com GitHub Actions).
 
-Quando quiser seguir para a Fase 4, e so pedir.
+Quando quiser conversar sobre isso, e so pedir.

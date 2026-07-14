@@ -89,7 +89,7 @@ def _bloco_voo(rotulo: str, voo: Voo) -> str:
 
 
 def _formatar_mensagem_alerta(alertas_disparados: List[Alerta]) -> str:
-    linhas = ["🚨 *Alerta de preco!*", ""]
+    linhas = ["🚨 *Alerta de preço!*", ""]
     for item in sorted(alertas_disparados, key=lambda a: a.voo.preco):
         linhas.append(_bloco_voo("📍", item.voo))
         for motivo in item.motivos:
@@ -97,7 +97,7 @@ def _formatar_mensagem_alerta(alertas_disparados: List[Alerta]) -> str:
         if item.media_recente is not None:
             diferenca_pct = (item.media_recente - item.voo.preco) / item.media_recente * 100
             linhas.append(
-                f"    📊 {diferenca_pct:.0f}% em relacao a media dos ultimos 30 dias "
+                f"    📊 {diferenca_pct:.0f}% em relação à média dos últimos 30 dias "
                 f"({formatar_preco(item.media_recente)})"
             )
         linhas.append("")
@@ -110,9 +110,9 @@ def _formatar_mensagem_resumo(
     agora = datetime.now(timezone.utc).astimezone(FUSO_HORARIO_LOCAL).strftime("%d/%m/%Y %H:%M")
 
     if not voos_top:
-        linhas = ["📋 *Resumo diario*", "", "🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."]
+        linhas = ["📋 *Resumo diário*", "", "🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."]
     else:
-        linhas = [f"📋 *Resumo diario* — top {len(voos_top)} janelas mais baratas", ""]
+        linhas = [f"📋 *Resumo diário* — top {len(voos_top)} janelas mais baratas", ""]
         for i, voo in enumerate(voos_top):
             linhas.append(_bloco_voo(_rotulo_posicao(i), voo))
             linhas.append("")
@@ -121,7 +121,7 @@ def _formatar_mensagem_resumo(
             ida_fmt = date.fromisoformat(menor_geral["ida"]).strftime("%d/%m")
             volta_fmt = date.fromisoformat(menor_geral["volta"]).strftime("%d/%m")
             linhas.append(
-                f"🏆 Menor preco ja registrado: *{formatar_preco(menor_geral['preco'])}* — "
+                f"🏆 Menor preço já registrado: *{formatar_preco(menor_geral['preco'])}* — "
                 f"{menor_geral['origem']} → {menor_geral['destino']} · {ida_fmt} → {volta_fmt}"
             )
             linhas.append("")
@@ -129,7 +129,7 @@ def _formatar_mensagem_resumo(
     linhas.append(f"🔎 {total_buscas} janelas verificadas · 🕒 {agora} (Cuiabá)")
 
     if erros:
-        linhas.append(f"⚠️ {len(erros)} busca(s) falharam nesta execucao (ver logs do Actions).")
+        linhas.append(f"⚠️ {len(erros)} busca(s) falharam nesta execução (ver logs do Actions).")
 
     return "\n".join(linhas)
 
@@ -144,7 +144,7 @@ def _avisar_erros_no_maximo_uma_vez_por_dia(
         return
 
     mensagem = (
-        f"⚠️ *Aviso*\n\n{len(erros)} busca(s) falharam nesta execucao. "
+        f"⚠️ *Aviso*\n\n{len(erros)} busca(s) falharam nesta execução. "
         "Ver logs do GitHub Actions para detalhes."
     )
     enviar_mensagem(token, chat_id, mensagem)

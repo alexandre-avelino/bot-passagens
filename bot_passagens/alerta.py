@@ -40,20 +40,20 @@ def avaliar(conn: sqlite3.Connection, config_alertas: Alertas, todos_os_voos: Li
         motivos: List[str] = []
 
         if mais_barato.preco <= config_alertas.preco_maximo:
-            motivos.append(f"abaixo do teto configurado ({formatar_preco(config_alertas.preco_maximo)})")
+            motivos.append(f"Abaixo do teto configurado ({formatar_preco(config_alertas.preco_maximo)})")
 
         preco_anterior = historico.ultima_leitura_janela(conn, origem, destino, ida, volta)
         if preco_anterior is not None and preco_anterior > 0:
             queda_pct = (preco_anterior - mais_barato.preco) / preco_anterior * 100
             if queda_pct >= config_alertas.queda_percentual:
-                motivos.append(f"caiu {queda_pct:.0f}% desde a ultima checagem (estava {formatar_preco(preco_anterior)})")
+                motivos.append(f"Caiu {queda_pct:.0f}% desde a última checagem (estava {formatar_preco(preco_anterior)})")
 
         if config_alertas.novo_menor_preco:
             menor_ja_visto = historico.menor_preco_janela(conn, origem, destino, ida, volta)
             # so conta como "recorde" se ja existia algo pra bater -- a primeira
             # vez que vemos uma janela nao e um recorde, e so o ponto de partida.
             if menor_ja_visto is not None and mais_barato.preco < menor_ja_visto:
-                motivos.append("novo menor preco ja visto para essa janela")
+                motivos.append("Novo menor preço já visto para essa janela")
 
         if motivos:
             media_recente = historico.media_precos_recentes(conn, origem, destino, ida, volta, desde)

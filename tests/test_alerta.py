@@ -55,7 +55,7 @@ def test_queda_percentual_acima_do_limiar_dispara(tmp_path):
         # cai de 1000 para 800 -> 20% de queda, limiar configurado e 10%
         alertas = avaliar(conn, _config_alertas(preco_maximo=1.0, queda_percentual=10.0, novo_menor_preco=False), [_voo(800.0)], AGORA)
         assert len(alertas) == 1
-        assert any("caiu" in motivo for motivo in alertas[0].motivos)
+        assert any("caiu" in motivo.lower() for motivo in alertas[0].motivos)
     finally:
         conn.close()
 
@@ -77,7 +77,7 @@ def test_novo_menor_preco_dispara_quando_bate_recorde(tmp_path):
         historico.registrar_voos(conn, [_voo(700.0)], timestamp=AGORA - timedelta(days=5))
         alertas = avaliar(conn, _config_alertas(preco_maximo=1.0, queda_percentual=1000.0, novo_menor_preco=True), [_voo(650.0)], AGORA)
         assert len(alertas) == 1
-        assert any("recorde" in motivo or "novo menor preco" in motivo for motivo in alertas[0].motivos)
+        assert any("novo menor preço" in motivo.lower() for motivo in alertas[0].motivos)
     finally:
         conn.close()
 

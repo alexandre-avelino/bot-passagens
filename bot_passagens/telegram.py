@@ -1,8 +1,13 @@
 """Envio de mensagens via Telegram Bot API (chamada HTTP direta, sem framework)."""
 
+from typing import List
+
 import requests
 
 API_BASE = "https://api.telegram.org"
+
+# Limite real do Telegram e 4096 caracteres por mensagem; deixamos uma folga.
+LIMITE_CARACTERES = 3900
 
 
 class TelegramError(Exception):
@@ -23,3 +28,30 @@ def enviar_mensagem(token: str, chat_id: str, texto: str) -> None:
     )
     if not resposta.ok:
         raise TelegramError(f"Telegram respondeu {resposta.status_code}: {resposta.text}")
+
+
+def _dividir_em_partes(texto: str, limite: int = LIMITE_CARACTERES) -> List[str]:
+    """Divide o texto em pedacos <= limite, cortando em quebras de paragrafo
+    (linha em branco) sempre que possivel, para nao partir um bloco no meio.
+    """
+    if len(texto) <= limite:
+        return [texto]
+
+    partes: List[str] = []
+    atual = ""
+    for paragrafo in texto.split("\n\n"):
+        candidato = f"{atual}\n\n{paragrafo}" if atual else paragrafo
+        if len(candidato) > limite and atual:
+            partes.append(atual)
+            atual = paragrafo
+        else:
+            atual = candidato
+    if atual:
+        partes.append(atual)
+    return partes
+
+
+def enviar_mensagem_longa(token: str, chat_id: str, texto: str) -> None:
+    """Envia `texto` como uma ou mais mensagens, respeitando o limite do Telegram."""
+    for parte in _dividir_em_partes(texto):
+        enviar_mensagem(token, chat_id, parte)

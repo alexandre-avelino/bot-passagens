@@ -26,7 +26,7 @@ from bot_passagens.formatacao import formatar_preco
 from bot_passagens.models import Voo
 from bot_passagens.providers.base import ProviderError
 from bot_passagens.providers.fast_flights_provider import FastFlightsProvider
-from bot_passagens.telegram import enviar_mensagem
+from bot_passagens.telegram import enviar_mensagem, enviar_mensagem_longa
 
 DELAY_ENTRE_BUSCAS_SEGUNDOS = 2.5
 TOP_N = 3
@@ -173,14 +173,14 @@ def main() -> None:
 
         if alertas_disparados:
             mensagem_alerta = _formatar_mensagem_alerta(alertas_disparados)
-            enviar_mensagem(token, chat_id, mensagem_alerta)
+            enviar_mensagem_longa(token, chat_id, mensagem_alerta)
             print(mensagem_alerta)
 
         if resumo_diario:
             voos_top = sorted(todos_os_voos, key=lambda v: v.preco)[:TOP_N]
             menor_geral = historico.menor_preco_geral(conn, config.origem)
             mensagem_resumo = _formatar_mensagem_resumo(voos_top, total_buscas, menor_geral, erros)
-            enviar_mensagem(token, chat_id, mensagem_resumo)
+            enviar_mensagem_longa(token, chat_id, mensagem_resumo)
             print(mensagem_resumo)
 
         if not alertas_disparados and not resumo_diario:

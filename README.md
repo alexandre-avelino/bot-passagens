@@ -111,6 +111,49 @@ Actions — sem precisar deixar nenhum computador ligado. Sem o
 `RESUMO_DIARIO=true`, uma execucao sem nenhum alerta disparado nao manda
 nada no Telegram (ver secao abaixo).
 
+## Passo 7 — Cron externo (recomendado, corrige falhas do agendador do GitHub)
+
+O agendador nativo do GitHub Actions (`schedule` no workflow) e conhecido por
+falhar em disparar workflows automaticamente de vez em quando -- e mais
+comum em repositorios novos ou pouco movimentados, e nao tem garantia
+oficial de horario. Isso ja aconteceu com o nosso (a execucao das 8h nao
+disparou sozinha em pelo menos uma ocasiao). Para nao depender so disso, dá
+pra usar um servico externo gratuito que chama a API do GitHub nos horarios
+certos, forcando o disparo por fora.
+
+1. Crie um **token do GitHub** com permissao minima (so pra disparar esse
+   workflow, nada mais):
+   - Va em <https://github.com/settings/personal-access-tokens/new>.
+   - **Resource owner**: sua conta.
+   - **Repository access**: "Only select repositories" -> escolha
+     `bot-passagens`.
+   - **Permissions -> Repository permissions -> Actions**: mude para
+     "Read and write".
+   - Deixe as outras permissoes como estao (sem acesso).
+   - Defina uma expiracao (ex: 1 ano) e clique em **Generate token**.
+   - Copie o token gerado (comeca com `github_pat_...`) — so aparece uma vez.
+2. Crie uma conta gratuita em <https://cron-job.org> (ou outro servico
+   equivalente de sua preferencia).
+3. Crie **dois** cronjobs, um para cada horario:
+   - **URL**: `https://api.github.com/repos/alexandre-avelino/bot-passagens/actions/workflows/monitor.yml/dispatches`
+   - **Metodo**: `POST`
+   - **Headers**:
+     - `Authorization: Bearer SEU_TOKEN_AQUI`
+     - `Accept: application/vnd.github+json`
+     - `Content-Type: application/json`
+   - **Body** (JSON): `{"ref":"main"}`
+   - **Horario do 1º cronjob**: 12:05 UTC (8h05 em Cuiaba)
+   - **Horario do 2º cronjob**: 00:05 UTC (20h05 em Cuiaba)
+4. Use o botao de "test run" do cron-job.org pra confirmar que disparou uma
+   execucao no GitHub (confira na aba **Actions** do repositorio).
+
+O agendamento nativo do GitHub (`schedule` no `monitor.yml`) continua ativo
+tambem -- nao tem problema os dois convivendo; se o do GitHub disparar por
+conta propria em algum dia, so significa uma execucao a mais (nao quebra
+nada). Se no futuro isso gerar mensagens duplicadas com frequencia, dá pra
+remover o bloco `schedule:` do workflow e deixar so o cron externo no
+comando.
+
 ## Historico de precos
 
 A cada execucao, todos os voos encontrados (nao so os 3 enviados no Telegram)

@@ -1,7 +1,5 @@
-"""Ponto de entrada: busca as janelas validas e envia as mais baratas para o Telegram.
-
-Fase 1: sem historico ainda (isso chega na Fase 2 com SQLite), entao o resumo
-mostra sempre as N janelas mais baratas encontradas nesta execucao.
+"""Ponto de entrada: busca as janelas validas, registra o historico e envia
+as mais baratas para o Telegram.
 """
 
 import os
@@ -9,6 +7,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
+from bot_passagens import historico
 from bot_passagens.config import Config, carregar_config
 from bot_passagens.dates import Janela, gerar_combinacoes
 from bot_passagens.models import Voo
@@ -106,6 +105,14 @@ def main() -> None:
 
     config = carregar_config(config_path)
     todos_os_voos, erros, total_buscas = _buscar_todos_os_voos(config)
+
+    historico_path = os.environ.get("BOT_PASSAGENS_HISTORICO", historico.CAMINHO_PADRAO)
+    conn = historico.conectar(historico_path)
+    try:
+        historico.registrar_voos(conn, todos_os_voos)
+    finally:
+        conn.close()
+
     voos_top = sorted(todos_os_voos, key=lambda v: v.preco)[:TOP_N]
 
     mensagem = _formatar_mensagem(voos_top, total_buscas=total_buscas, erros=erros)

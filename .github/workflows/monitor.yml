@@ -10,6 +10,9 @@ on:
     - cron: "5 0 * * *"
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   buscar-passagens:
     runs-on: ubuntu-latest
@@ -30,3 +33,15 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m bot_passagens.main
+
+      - name: Salvar historico de precos no repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add historico.db
+          if git diff --cached --quiet; then
+            echo "Sem mudancas no historico."
+          else
+            git commit -m "Atualiza historico de precos"
+            git push
+          fi

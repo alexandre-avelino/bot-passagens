@@ -6,16 +6,20 @@ Roda de graca no GitHub Actions, 2x por dia.
 
 Este README assume que voce nao mexe com codigo. Siga na ordem.
 
-## O que ja esta pronto (Fase 1)
+## O que ja esta pronto (Fases 1 e 2)
 
 - Gerador de combinacoes de datas (ida/volta) respeitando a regra do dia
   obrigatorio, com testes automatizados.
-- Busca real de precos (Google Voos) via a biblioteca `fast-flights`.
+- Busca real de precos (Google Voos) via a biblioteca `fast-flights`,
+  incluindo horario de ida/chegada e escalas.
 - Envio de mensagem para o Telegram com as 3 janelas mais baratas encontradas.
 - Workflow do GitHub Actions ja configurado para rodar 2x por dia.
+- Historico de precos em SQLite (`historico.db`), commitado de volta no
+  repositorio a cada execucao — todo voo encontrado fica registrado, nao so
+  o top 3 enviado no Telegram.
 
-Ainda **nao** existe historico de precos nem alertas de queda/recorde — isso
-e a Fase 2 e 3 (ver final deste arquivo).
+Ainda **nao** existem os alertas que usam esse historico (teto de preco,
+queda %, novo menor preco) — isso e a Fase 3 (ver final deste arquivo).
 
 ## Passo 1 — Criar o bot no Telegram
 
@@ -97,6 +101,21 @@ mais baratas encontradas. **Isso marca a Fase 1 como pronta.**
 Depois disso, o mesmo vai acontecer sozinho, automaticamente, pelo GitHub
 Actions — sem precisar deixar nenhum computador ligado.
 
+## Historico de precos
+
+A cada execucao, todos os voos encontrados (nao so os 3 enviados no Telegram)
+sao gravados em `historico.db` (SQLite), que fica versionado dentro do
+proprio repositorio — o workflow do Actions commita esse arquivo de volta
+automaticamente depois de cada busca. Isso significa que:
+
+- o repositorio vai acumular commits automaticos com a mensagem "Atualiza
+  historico de precos" (2x por dia); isso e esperado, nao precisa fazer nada;
+- se quiser consultar o historico manualmente, da pra abrir `historico.db`
+  com qualquer visualizador de SQLite (ex: extensao "SQLite Viewer" no
+  VS Code) ou rodar `sqlite3 historico.db "select * from buscas"` no
+  terminal;
+- esse historico ainda nao é usado para gerar alertas — isso e a Fase 3.
+
 ## Rodar os testes automatizados
 
 ```bash
@@ -124,12 +143,10 @@ final da mensagem do Telegram e nos logs do Actions), tente, em ordem:
 
 ## Proximas fases (ainda nao implementadas)
 
-- **Fase 2**: historico de precos em SQLite, commitado de volta no
-  repositorio a cada execucao.
 - **Fase 3**: alertas completos (teto de preco, queda percentual, novo menor
   preco historico) e resumo diario com contexto ("X% abaixo da media de 30
-  dias").
+  dias"), usando o historico da Fase 2.
 - **Fase 4** (opcional): comandos interativos no Telegram (`/hoje`,
   `/historico`, `/config`) e dashboard com grafico.
 
-Quando quiser seguir para a Fase 2, e so pedir.
+Quando quiser seguir para a Fase 3, e so pedir.

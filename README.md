@@ -1,25 +1,26 @@
 # Bot de monitoramento de passagens aereas
 
-Monitora precos de passagens (via Google Voos, sem API paga) e avisa no Telegram
-quando encontra as janelas mais baratas dentro das datas que voce configurar.
-Roda de graca no GitHub Actions, 2x por dia.
+Monitora precos de passagens (via Google Voos, sem API paga) e avisa no
+Telegram quando o preco de alguma janela bate uma regra configurada (teto,
+queda %, novo menor preco), alem de um resumo diario com o melhor achado do
+dia. Roda de graca no GitHub Actions, 2x por dia.
 
 Este README assume que voce nao mexe com codigo. Siga na ordem.
 
-## O que ja esta pronto (Fases 1 e 2)
+## O que ja esta pronto (Fases 1, 2 e 3)
 
 - Gerador de combinacoes de datas (ida/volta) respeitando a regra do dia
   obrigatorio, com testes automatizados.
 - Busca real de precos (Google Voos) via a biblioteca `fast-flights`,
   incluindo horario de ida/chegada e escalas.
-- Envio de mensagem para o Telegram com as 3 janelas mais baratas encontradas.
 - Workflow do GitHub Actions ja configurado para rodar 2x por dia.
 - Historico de precos em SQLite (`historico.db`), commitado de volta no
   repositorio a cada execucao — todo voo encontrado fica registrado, nao so
-  o top 3 enviado no Telegram.
-
-Ainda **nao** existem os alertas que usam esse historico (teto de preco,
-queda %, novo menor preco) — isso e a Fase 3 (ver final deste arquivo).
+  o que aparece nas mensagens.
+- Alertas completos usando esse historico (teto de preco, queda percentual,
+  novo menor preco) e resumo diario com o melhor preco ja visto. Ver a secao
+  "Alertas e resumo diario" abaixo — o comportamento de quando o bot manda
+  mensagem mudou nesta fase.
 
 ## Passo 1 — Criar o bot no Telegram
 
@@ -76,7 +77,12 @@ Abra `config.yaml` e ajuste:
   inteiros no destino (nunca dia de embarque/desembarque). `margem_adjacente`
   e quantos dias de folga sao exigidos antes E depois de cada um desses dias.
 - `duracao.minima` / `duracao.maxima`: duracao da estadia, em dias.
-- `alertas.preco_maximo`: teto de preco (usado nas proximas fases).
+- `alertas.preco_maximo`: dispara alerta quando algum voo custar isso ou menos.
+- `alertas.queda_percentual`: dispara alerta quando o preco cair esse % ou
+  mais desde a ultima vez que aquela janela foi checada.
+- `alertas.novo_menor_preco`: se `true`, dispara alerta quando uma janela
+  bate o menor preco ja visto para ela (a primeira vez que uma janela e
+  vista nao conta como recorde, so estabelece o ponto de partida).
 
 Nao precisa mexer em nenhum arquivo `.py` para monitorar uma viagem nova.
 
@@ -91,15 +97,19 @@ pip install -r requirements.txt
 
 export TELEGRAM_BOT_TOKEN="cole_o_token_aqui"
 export TELEGRAM_CHAT_ID="cole_o_chat_id_aqui"
+export RESUMO_DIARIO=true   # forca o resumo diario neste teste manual
 
 python -m bot_passagens.main
 ```
 
-Se tudo estiver certo, voce recebe uma mensagem no Telegram com as 3 janelas
-mais baratas encontradas. **Isso marca a Fase 1 como pronta.**
+Se tudo estiver certo, voce recebe uma mensagem no Telegram com as janelas
+mais baratas encontradas (o resumo diario, por causa do `RESUMO_DIARIO=true`
+acima). **Isso marca a Fase 1 como pronta.**
 
 Depois disso, o mesmo vai acontecer sozinho, automaticamente, pelo GitHub
-Actions — sem precisar deixar nenhum computador ligado.
+Actions — sem precisar deixar nenhum computador ligado. Sem o
+`RESUMO_DIARIO=true`, uma execucao sem nenhum alerta disparado nao manda
+nada no Telegram (ver secao abaixo).
 
 ## Historico de precos
 
@@ -113,8 +123,34 @@ automaticamente depois de cada busca. Isso significa que:
 - se quiser consultar o historico manualmente, da pra abrir `historico.db`
   com qualquer visualizador de SQLite (ex: extensao "SQLite Viewer" no
   VS Code) ou rodar `sqlite3 historico.db "select * from buscas"` no
-  terminal;
-- esse historico ainda nao é usado para gerar alertas — isso e a Fase 3.
+  terminal.
+
+## Alertas e resumo diario
+
+A cada execucao o bot avalia, para cada janela de datas, se alguma regra do
+`config.yaml` bateu (comparando com o que ja estava no historico *antes*
+desta execucao):
+
+- preco menor ou igual a `alertas.preco_maximo`;
+- queda de `alertas.queda_percentual`% ou mais desde a ultima vez que essa
+  janela especifica foi checada;
+- novo menor preco ja visto para essa janela especifica (se
+  `alertas.novo_menor_preco: true`).
+
+Se pelo menos uma bateu, chega um **alerta imediato** no Telegram — com rota,
+datas, preco, o motivo do alerta e a comparacao com a media dos precos dessa
+janela nos ultimos 30 dias.
+
+Alem disso, a execucao das ~8h (horario de Cuiaba) sempre manda um
+**resumo diario** com as 3 janelas mais baratas do dia e o menor preco ja
+registrado em todo o historico, independente de ter batido alguma regra.
+
+**Importante**: se nao bateu nenhuma regra E a execucao nao e a das 8h
+(ou seja, a execucao das ~20h na maioria dos dias), **o bot nao manda nada
+no Telegram**. Isso e o comportamento esperado, nao um bug — significa que
+os precos nao mudaram o suficiente para valer um aviso. Se quiser conferir
+que o bot rodou mesmo assim, os logs de cada execucao ficam em
+**Actions** no GitHub.
 
 ## Rodar os testes automatizados
 
@@ -133,8 +169,9 @@ Voos (nao existe um limite oficial publicado, entao isso e uma estimativa
 conservadora, nao uma garantia). Tambem ha uma pausa de ~2,5s entre cada
 busca dentro de uma mesma execucao.
 
-Se mesmo assim voce comecar a ver avisos de erro nas execucoes (aparecem no
-final da mensagem do Telegram e nos logs do Actions), tente, em ordem:
+Se buscas comecarem a falhar, o bot manda um aviso no Telegram (no maximo 1x
+por dia, mesmo que falhe em varias execucoes seguidas) e sempre registra o
+detalhe nos logs do Actions. Se isso comecar a acontecer, tente, em ordem:
 
 - reduzir a lista de `destinos` no `config.yaml`;
 - reduzir ainda mais a frequencia (editar os `cron` em
@@ -143,10 +180,7 @@ final da mensagem do Telegram e nos logs do Actions), tente, em ordem:
 
 ## Proximas fases (ainda nao implementadas)
 
-- **Fase 3**: alertas completos (teto de preco, queda percentual, novo menor
-  preco historico) e resumo diario com contexto ("X% abaixo da media de 30
-  dias"), usando o historico da Fase 2.
 - **Fase 4** (opcional): comandos interativos no Telegram (`/hoje`,
   `/historico`, `/config`) e dashboard com grafico.
 
-Quando quiser seguir para a Fase 3, e so pedir.
+Quando quiser seguir para a Fase 4, e so pedir.

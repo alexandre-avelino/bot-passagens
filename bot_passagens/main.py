@@ -4,8 +4,11 @@ as regras de alerta e envia as notificacoes adequadas para o Telegram.
 Duas notificacoes independentes por execucao:
 - alerta imediato: enviado so quando alguma janela bate uma regra (teto,
   queda % ou novo menor preco);
-- resumo diario: enviado so na execucao marcada como tal (ver RESUMO_DIARIO
-  no workflow), com o top N do dia e o menor preco ja visto no historico.
+- resumo diario: enviado so quando a execucao acontece de manha, horario de
+  Cuiaba (ver JANELA_RESUMO_DIARIO_HORAS), com o top N do dia e o menor
+  preco ja visto no historico. Isso e decidido pelo horario real da
+  execucao, nao por qual gatilho disparou o workflow -- assim funciona
+  igual seja via cron externo, GitHub Actions ou execucao manual.
 
 Se nenhuma das duas se aplica, a execucao nao manda nada no Telegram -- isso
 e esperado, nao e uma falha.
@@ -33,6 +36,14 @@ DELAY_ENTRE_BUSCAS_SEGUNDOS = 2.5
 TOP_N = 3
 MEDALHAS = ["🥇", "🥈", "🥉"]
 FUSO_HORARIO_LOCAL = ZoneInfo("America/Cuiaba")
+# janela de horas (Cuiaba) que conta como "execucao da manha" -> resumo diario.
+# 6h-11h da uma folga generosa em torno do horario alvo (8h) sem risco de
+# alcancar a execucao da noite (20h).
+JANELA_RESUMO_DIARIO_HORAS = range(6, 12)
+
+
+def _e_execucao_do_resumo_diario(agora_local: datetime) -> bool:
+    return agora_local.hour in JANELA_RESUMO_DIARIO_HORAS
 
 
 def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
@@ -96,9 +107,10 @@ def _formatar_mensagem_alerta(alertas_disparados: List[Alerta]) -> str:
             linhas.append(f"    • {motivo}")
         if item.media_recente is not None:
             diferenca_pct = (item.media_recente - item.voo.preco) / item.media_recente * 100
+            direcao = "abaixo" if diferenca_pct >= 0 else "acima"
             linhas.append(
-                f"    📊 {diferenca_pct:.0f}% em relação à média dos últimos 30 dias "
-                f"({formatar_preco(item.media_recente)})"
+                f"    📊 {abs(diferenca_pct):.0f}% {direcao} da média geral dos últimos 30 dias "
+                f"(todas as rotas: {formatar_preco(item.media_recente)})"
             )
         linhas.append("")
     return "\n".join(linhas).rstrip()
@@ -156,13 +168,15 @@ def main() -> None:
     config_path = os.environ.get("BOT_PASSAGENS_CONFIG", "config.yaml")
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    resumo_diario = os.environ.get("RESUMO_DIARIO", "").lower() == "true"
+    forcar_resumo = os.environ.get("FORCAR_RESUMO", "").lower() == "true"
 
     if not token or not chat_id:
         raise SystemExit("Defina as variaveis de ambiente TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID antes de rodar.")
 
     config = carregar_config(config_path)
     agora = datetime.now(timezone.utc)
+    agora_local = agora.astimezone(FUSO_HORARIO_LOCAL)
+    resumo_diario = forcar_resumo or _e_execucao_do_resumo_diario(agora_local)
     todos_os_voos, erros, total_buscas = _buscar_todos_os_voos(config)
 
     historico_path = os.environ.get("BOT_PASSAGENS_HISTORICO", historico.CAMINHO_PADRAO)

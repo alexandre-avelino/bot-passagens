@@ -1,19 +1,17 @@
 name: Monitorar passagens
 
 on:
-  schedule:
-    # Horarios em UTC. Cuiaba (UTC-4) = ~8h e ~20h.
-    # Reduzido de 5x para 2x/dia para diminuir o risco de rate limit no Google Voos.
-    # Minuto 5 (nao 0) de proposito: o GitHub atrasa/pula com mais frequencia
-    # execucoes agendadas bem na hora cheia, por ser o horario de pico.
-    - cron: "5 12 * * *"
-    - cron: "5 0 * * *"
+  # Sem "schedule:" de proposito -- o agendador nativo do GitHub Actions
+  # provou ser pouco confiavel (nao disparava, e quando passou a disparar
+  # foi com ~2h de atraso, duplicando execucoes junto com o cron externo).
+  # O disparo real e feito por um cron externo (cron-job.org, ver README
+  # Passo 7) chamando este workflow_dispatch 2x/dia.
   workflow_dispatch:
     inputs:
-      resumo:
-        description: "Tratar esta execucao manual como o resumo diario?"
+      forcar_resumo:
+        description: "Forcar tratamento como resumo diario, independente do horario (uso manual/teste)"
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
@@ -37,9 +35,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # o resumo diario e a execucao das ~8h de Cuiaba; execucoes manuais
-          # tambem contam como resumo por padrao (input "resumo", ver acima).
-          RESUMO_DIARIO: ${{ github.event.schedule == '5 12 * * *' || (github.event_name == 'workflow_dispatch' && inputs.resumo) }}
+          # se e resumo diario ou nao e decidido dentro do main.py, com base
+          # no horario local de Cuiaba na hora da execucao -- nao depende de
+          # qual gatilho disparou. FORCAR_RESUMO so serve pra teste manual.
+          FORCAR_RESUMO: ${{ github.event_name == 'workflow_dispatch' && inputs.forcar_resumo }}
         run: python -m bot_passagens.main
 
       - name: Salvar historico de precos e dashboard no repositorio

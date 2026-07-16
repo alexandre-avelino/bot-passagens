@@ -110,28 +110,30 @@ pip install -r requirements.txt
 
 export TELEGRAM_BOT_TOKEN="cole_o_token_aqui"
 export TELEGRAM_CHAT_ID="cole_o_chat_id_aqui"
-export RESUMO_DIARIO=true   # forca o resumo diario neste teste manual
+export FORCAR_RESUMO=true   # forca o resumo diario neste teste manual, independente do horario
 
 python -m bot_passagens.main
 ```
 
 Se tudo estiver certo, voce recebe uma mensagem no Telegram com as janelas
-mais baratas encontradas (o resumo diario, por causa do `RESUMO_DIARIO=true`
+mais baratas encontradas (o resumo diario, por causa do `FORCAR_RESUMO=true`
 acima). **Isso marca a Fase 1 como pronta.**
 
-Depois disso, o mesmo vai acontecer sozinho, automaticamente, pelo GitHub
-Actions — sem precisar deixar nenhum computador ligado. Sem o
-`RESUMO_DIARIO=true`, uma execucao sem nenhum alerta disparado nao manda
-nada no Telegram (ver secao abaixo).
+Depois disso, o mesmo vai acontecer sozinho, automaticamente, pelo cron
+externo (Passo 7) — sem precisar deixar nenhum computador ligado. Sem o
+`FORCAR_RESUMO=true`, o bot decide sozinho se e resumo diario com base no
+horario local de Cuiaba (madrugada/manha = resumo; resto do dia = so alerta
+se disparar alguma regra, ver secao abaixo).
 
-## Passo 7 — Cron externo (recomendado, corrige falhas do agendador do GitHub)
+## Passo 7 — Cron externo (obrigatorio: e o unico agendador usado)
 
-O agendador nativo do GitHub Actions (`schedule` no workflow) e conhecido por
-falhar em disparar workflows automaticamente de vez em quando -- e mais
-comum em repositorios novos ou pouco movimentados, e nao tem garantia
-oficial de horario. Isso ja aconteceu com o nosso mais de uma vez. Para nao depender so disso, dá
-pra usar um servico externo gratuito que chama a API do GitHub nos horarios
-certos, forcando o disparo por fora.
+O agendador nativo do GitHub Actions (`schedule` no workflow) se mostrou
+pouco confiavel: primeiro nao disparava nunca, depois passou a disparar
+mas com ~2h de atraso -- e como o cron externo (abaixo) tambem estava
+ativo, isso causava **execucoes e mensagens duplicadas** (uma no horario
+certo, outra ~2h depois). Por isso o workflow **nao tem mais `schedule:`
+nenhum** -- o unico jeito do bot rodar automaticamente e via este cron
+externo gratuito, que chama a API do GitHub nos horarios certos.
 
 1. Crie um **token do GitHub** com permissao minima (so pra disparar esse
    workflow, nada mais):
@@ -165,12 +167,10 @@ certos, forcando o disparo por fora.
 4. Use o botao de "test run" do cron-job.org pra confirmar que disparou uma
    execucao no GitHub (confira na aba **Actions** do repositorio).
 
-O agendamento nativo do GitHub (`schedule` no `monitor.yml`) continua ativo
-tambem -- nao tem problema os dois convivendo; se o do GitHub disparar por
-conta propria em algum dia, so significa uma execucao a mais (nao quebra
-nada). Se no futuro isso gerar mensagens duplicadas com frequencia, dá pra
-remover o bloco `schedule:` do workflow e deixar so o cron externo no
-comando.
+Sem esse cron externo configurado e ativo, o bot **nao roda sozinho** --
+so dispara quando voce (ou eu) rodar manualmente pela aba Actions. Por
+isso esse passo deixou de ser "recomendado" e virou obrigatorio pra
+automacao funcionar.
 
 ## Historico de precos
 

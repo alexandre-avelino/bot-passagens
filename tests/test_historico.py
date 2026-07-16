@@ -133,7 +133,7 @@ def test_ultima_leitura_janela_sem_historico_retorna_none(tmp_path):
         conn.close()
 
 
-def test_media_precos_recentes_ignora_registros_antigos(tmp_path):
+def test_media_geral_recente_ignora_registros_antigos(tmp_path):
     caminho = str(tmp_path / "historico.db")
     conn = historico.conectar(caminho)
     try:
@@ -144,11 +144,28 @@ def test_media_precos_recentes_ignora_registros_antigos(tmp_path):
         historico.registrar_voos(conn, [_voo(600.0)], timestamp=recente1)
         historico.registrar_voos(conn, [_voo(700.0)], timestamp=recente2)
 
-        media = historico.media_precos_recentes(
-            conn, "CGB", "GRU", date(2026, 10, 3), date(2026, 10, 8),
-            desde=datetime(2026, 6, 15, tzinfo=timezone.utc),
-        )
+        media = historico.media_geral_recente(conn, "CGB", desde=datetime(2026, 6, 15, tzinfo=timezone.utc))
         assert media == 650.0
+    finally:
+        conn.close()
+
+
+def test_media_geral_recente_combina_todos_os_destinos(tmp_path):
+    caminho = str(tmp_path / "historico.db")
+    conn = historico.conectar(caminho)
+    try:
+        momento = datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc)
+        historico.registrar_voos(
+            conn,
+            [
+                _voo(600.0, destino="GRU", ida=date(2026, 10, 3), volta=date(2026, 10, 8)),
+                _voo(1000.0, destino="CGH", ida=date(2026, 10, 5), volta=date(2026, 10, 10)),
+            ],
+            timestamp=momento,
+        )
+
+        media = historico.media_geral_recente(conn, "CGB", desde=datetime(2026, 6, 15, tzinfo=timezone.utc))
+        assert media == 800.0
     finally:
         conn.close()
 

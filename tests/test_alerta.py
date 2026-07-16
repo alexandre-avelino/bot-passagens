@@ -147,3 +147,33 @@ def test_media_recente_none_sem_historico(tmp_path):
         assert alertas[0].media_recente is None
     finally:
         conn.close()
+
+
+def test_media_recente_e_geral_entre_destinos_e_janelas_diferentes(tmp_path):
+    conn = historico.conectar(str(tmp_path / "historico.db"))
+    try:
+        # historico de duas janelas bem diferentes (destinos e datas distintas)
+        historico.registrar_voos(
+            conn,
+            [_voo(600.0, destino="GRU", ida=date(2026, 10, 3), volta=date(2026, 10, 8))],
+            timestamp=AGORA - timedelta(days=2),
+        )
+        historico.registrar_voos(
+            conn,
+            [_voo(1000.0, destino="CGH", ida=date(2026, 10, 20), volta=date(2026, 10, 25))],
+            timestamp=AGORA - timedelta(days=1),
+        )
+
+        # alerta disparado numa TERCEIRA janela, que nunca apareceu antes --
+        # a media exibida deve vir do geral (600 e 1000 -> 800), nao ficar None
+        # so porque essa janela especifica nao tem historico proprio.
+        alertas = avaliar(
+            conn,
+            _config_alertas(preco_maximo=700.0, queda_percentual=1000.0, novo_menor_preco=False),
+            [_voo(650.0, destino="GRU", ida=date(2026, 10, 5), volta=date(2026, 10, 12))],
+            AGORA,
+        )
+        assert len(alertas) == 1
+        assert alertas[0].media_recente == 800.0
+    finally:
+        conn.close()

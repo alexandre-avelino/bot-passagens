@@ -1,29 +1,23 @@
 """Ponto de entrada: busca as janelas validas, registra o historico, avalia
-as regras de alerta e envia as notificacoes adequadas para o Telegram.
+as regras de alerta e envia as notificacoes para o Telegram.
 
-Duas notificacoes independentes por execucao:
-- alerta imediato: enviado so quando alguma janela bate uma regra (teto,
-  queda % ou novo menor preco);
-- resumo diario: enviado so quando a execucao acontece de manha, horario de
-  Cuiaba (ver JANELA_RESUMO_DIARIO_HORAS), com o top N do dia e o menor
-  preco ja visto no historico. Isso e decidido pelo horario real da
-  execucao, nao por qual gatilho disparou o workflow -- assim funciona
-  igual seja via cron externo, GitHub Actions ou execucao manual.
-
-Se nenhuma das duas se aplica, a execucao nao manda nada no Telegram -- isso
-e esperado, nao e uma falha.
+Toda execucao manda DUAS mensagens:
+- Detalhe: as N janelas mais baratas encontradas, com preco/link/comparacao
+  com a media geral, e um selo 🚨 (com os motivos) nas janelas que tambem
+  bateram alguma regra de alerta (teto, queda % ou novo menor preco);
+- Resumo: as mesmas N janelas mais baratas + o menor preco ja registrado em
+  todo o historico + metadados da execucao.
 """
 
 import os
 import sqlite3
 import sys
 import time
-from datetime import date, datetime, timezone
-from typing import List, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 from bot_passagens import alerta, dashboard, historico
-from bot_passagens.alerta import Alerta
 from bot_passagens.config import Config, carregar_config
 from bot_passagens.dates import Janela, gerar_combinacoes
 from bot_passagens.formatacao import formatar_preco
@@ -36,14 +30,6 @@ DELAY_ENTRE_BUSCAS_SEGUNDOS = 2.5
 TOP_N = 3
 MEDALHAS = ["🥇", "🥈", "🥉"]
 FUSO_HORARIO_LOCAL = ZoneInfo("America/Cuiaba")
-# janela de horas (Cuiaba) que conta como "execucao da manha" -> resumo diario.
-# 6h-11h da uma folga generosa em torno do horario alvo (8h) sem risco de
-# alcancar a execucao da noite (20h).
-JANELA_RESUMO_DIARIO_HORAS = range(6, 12)
-
-
-def _e_execucao_do_resumo_diario(agora_local: datetime) -> bool:
-    return agora_local.hour in JANELA_RESUMO_DIARIO_HORAS
 
 
 def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
@@ -99,18 +85,29 @@ def _bloco_voo(rotulo: str, voo: Voo) -> str:
     )
 
 
-def _formatar_mensagem_alerta(alertas_disparados: List[Alerta]) -> str:
-    linhas = ["🚨 *Alerta de preço!*", ""]
-    for item in sorted(alertas_disparados, key=lambda a: a.voo.preco):
-        linhas.append(_bloco_voo("📍", item.voo))
-        for motivo in item.motivos:
+def _formatar_mensagem_detalhe(
+    voos_top: List[Voo],
+    motivos_por_janela: Dict[Tuple[str, date, date], List[str]],
+    media_geral: Optional[float],
+) -> str:
+    if not voos_top:
+        return "📋 *Detalhe das buscas*\n\n🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."
+
+    linhas = [f"📋 *Detalhe das buscas* — top {len(voos_top)} janelas mais baratas", ""]
+    for i, voo in enumerate(voos_top):
+        motivos = motivos_por_janela.get((voo.destino, voo.ida, voo.volta), [])
+        rotulo = _rotulo_posicao(i)
+        if motivos:
+            rotulo = f"🚨 {rotulo}"
+        linhas.append(_bloco_voo(rotulo, voo))
+        for motivo in motivos:
             linhas.append(f"    • {motivo}")
-        if item.media_recente is not None:
-            diferenca_pct = (item.media_recente - item.voo.preco) / item.media_recente * 100
+        if media_geral is not None:
+            diferenca_pct = (media_geral - voo.preco) / media_geral * 100
             direcao = "abaixo" if diferenca_pct >= 0 else "acima"
             linhas.append(
                 f"    📊 {abs(diferenca_pct):.0f}% {direcao} da média geral dos últimos 30 dias "
-                f"(todas as rotas: {formatar_preco(item.media_recente)})"
+                f"({formatar_preco(media_geral)})"
             )
         linhas.append("")
     return "\n".join(linhas).rstrip()
@@ -122,9 +119,9 @@ def _formatar_mensagem_resumo(
     agora = datetime.now(timezone.utc).astimezone(FUSO_HORARIO_LOCAL).strftime("%d/%m/%Y %H:%M")
 
     if not voos_top:
-        linhas = ["📋 *Resumo diário*", "", "🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."]
+        linhas = ["📈 *Resumo*", "", "🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."]
     else:
-        linhas = [f"📋 *Resumo diário* — top {len(voos_top)} janelas mais baratas", ""]
+        linhas = [f"📈 *Resumo* — top {len(voos_top)} janelas mais baratas", ""]
         for i, voo in enumerate(voos_top):
             linhas.append(_bloco_voo(_rotulo_posicao(i), voo))
             linhas.append("")
@@ -168,15 +165,12 @@ def main() -> None:
     config_path = os.environ.get("BOT_PASSAGENS_CONFIG", "config.yaml")
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    forcar_resumo = os.environ.get("FORCAR_RESUMO", "").lower() == "true"
 
     if not token or not chat_id:
         raise SystemExit("Defina as variaveis de ambiente TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID antes de rodar.")
 
     config = carregar_config(config_path)
     agora = datetime.now(timezone.utc)
-    agora_local = agora.astimezone(FUSO_HORARIO_LOCAL)
-    resumo_diario = forcar_resumo or _e_execucao_do_resumo_diario(agora_local)
     todos_os_voos, erros, total_buscas = _buscar_todos_os_voos(config)
 
     historico_path = os.environ.get("BOT_PASSAGENS_HISTORICO", historico.CAMINHO_PADRAO)
@@ -185,23 +179,25 @@ def main() -> None:
         # avaliar ANTES de registrar: as comparacoes precisam ser contra o
         # que ja estava no historico antes desta execucao.
         alertas_disparados = alerta.avaliar(conn, config.alertas, todos_os_voos, agora)
+        motivos_por_janela = {
+            (item.voo.destino, item.voo.ida, item.voo.volta): item.motivos for item in alertas_disparados
+        }
+        desde = agora - timedelta(days=alerta.DIAS_MEDIA_RECENTE)
+        media_geral = historico.media_geral_recente(conn, config.origem, desde)
+
         historico.registrar_voos(conn, todos_os_voos, timestamp=agora)
         dashboard.gerar_dashboard(conn, config.origem)
 
-        if alertas_disparados:
-            mensagem_alerta = _formatar_mensagem_alerta(alertas_disparados)
-            enviar_mensagem_longa(token, chat_id, mensagem_alerta)
-            print(mensagem_alerta)
+        voos_top = sorted(todos_os_voos, key=lambda v: v.preco)[:TOP_N]
 
-        if resumo_diario:
-            voos_top = sorted(todos_os_voos, key=lambda v: v.preco)[:TOP_N]
-            menor_geral = historico.menor_preco_geral(conn, config.origem)
-            mensagem_resumo = _formatar_mensagem_resumo(voos_top, total_buscas, menor_geral, erros)
-            enviar_mensagem_longa(token, chat_id, mensagem_resumo)
-            print(mensagem_resumo)
+        mensagem_detalhe = _formatar_mensagem_detalhe(voos_top, motivos_por_janela, media_geral)
+        enviar_mensagem_longa(token, chat_id, mensagem_detalhe)
+        print(mensagem_detalhe)
 
-        if not alertas_disparados and not resumo_diario:
-            print(f"Nenhum alerta e execucao nao e o resumo diario -- nenhuma mensagem enviada ({total_buscas} janelas verificadas).")
+        menor_geral = historico.menor_preco_geral(conn, config.origem)
+        mensagem_resumo = _formatar_mensagem_resumo(voos_top, total_buscas, menor_geral, erros)
+        enviar_mensagem_longa(token, chat_id, mensagem_resumo)
+        print(mensagem_resumo)
 
         _avisar_erros_no_maximo_uma_vez_por_dia(conn, token, chat_id, erros, hoje=agora.date().isoformat())
     finally:

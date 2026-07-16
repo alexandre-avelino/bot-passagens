@@ -1,29 +1,52 @@
-from datetime import datetime
+from datetime import date
 
-from bot_passagens.main import FUSO_HORARIO_LOCAL, _e_execucao_do_resumo_diario
-
-
-def _hora_local(hora: int) -> datetime:
-    return datetime(2026, 10, 1, hora, 5, tzinfo=FUSO_HORARIO_LOCAL)
+from bot_passagens.main import _formatar_mensagem_detalhe
+from bot_passagens.models import Voo
 
 
-def test_execucao_as_8h_e_resumo_diario():
-    assert _e_execucao_do_resumo_diario(_hora_local(8)) is True
+def _voo(preco: float, destino: str = "GRU", ida: date = date(2026, 10, 3), volta: date = date(2026, 10, 8)) -> Voo:
+    return Voo(
+        origem="CGB",
+        destino=destino,
+        ida=ida,
+        volta=volta,
+        companhia="Gol",
+        preco=preco,
+        escalas=0,
+        partida="08:00",
+        chegada="11:00",
+        link="https://exemplo",
+    )
 
 
-def test_execucao_atrasada_ate_as_11h_ainda_conta_como_resumo():
-    assert _e_execucao_do_resumo_diario(_hora_local(10)) is True
-    assert _e_execucao_do_resumo_diario(_hora_local(11)) is True
+def test_detalhe_sem_voos():
+    texto = _formatar_mensagem_detalhe([], {}, media_geral=None)
+    assert "Nenhum voo encontrado" in texto
 
 
-def test_execucao_as_20h_nao_e_resumo_diario():
-    assert _e_execucao_do_resumo_diario(_hora_local(20)) is False
+def test_detalhe_sem_motivos_nao_tem_selo_de_alerta():
+    voo = _voo(600.0)
+    texto = _formatar_mensagem_detalhe([voo], {}, media_geral=700.0)
+    assert "🚨" not in texto
+    assert "abaixo da média geral" in texto
 
 
-def test_execucao_de_madrugada_nao_e_resumo_diario():
-    assert _e_execucao_do_resumo_diario(_hora_local(2)) is False
-    assert _e_execucao_do_resumo_diario(_hora_local(5)) is False
+def test_detalhe_com_motivo_mostra_selo_e_motivo():
+    voo = _voo(600.0, destino="CGH", ida=date(2026, 10, 5), volta=date(2026, 10, 10))
+    motivos_por_janela = {("CGH", date(2026, 10, 5), date(2026, 10, 10)): ["Novo menor preço já visto para essa janela"]}
+    texto = _formatar_mensagem_detalhe([voo], motivos_por_janela, media_geral=700.0)
+    assert "🚨" in texto
+    assert "Novo menor preço já visto para essa janela" in texto
 
 
-def test_execucao_ao_meio_dia_nao_e_resumo_diario():
-    assert _e_execucao_do_resumo_diario(_hora_local(12)) is False
+def test_detalhe_sem_media_nao_quebra():
+    voo = _voo(600.0)
+    texto = _formatar_mensagem_detalhe([voo], {}, media_geral=None)
+    assert "média geral" not in texto
+    assert "R$ 600,00" in texto
+
+
+def test_detalhe_direcao_acima_quando_preco_maior_que_media():
+    voo = _voo(1000.0)
+    texto = _formatar_mensagem_detalhe([voo], {}, media_geral=700.0)
+    assert "acima da média geral" in texto

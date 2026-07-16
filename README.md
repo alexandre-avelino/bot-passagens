@@ -1,9 +1,11 @@
 # Bot de monitoramento de passagens aereas
 
-Monitora precos de passagens (via Google Voos, sem API paga) e avisa no
-Telegram quando o preco de alguma janela bate uma regra configurada (teto,
-queda %, novo menor preco), alem de um resumo diario com o melhor achado do
-dia. Roda de graca no GitHub Actions, 2x por dia.
+Monitora precos de passagens (via Google Voos, sem API paga) e manda duas
+mensagens no Telegram a cada execucao (2x por dia, de graca via GitHub
+Actions): um **detalhe** das janelas mais baratas encontradas (com selo 🚨
+nas que baterem alguma regra configurada -- teto, queda %, novo menor
+preco) e um **resumo** com o melhor preco ja registrado em todo o
+historico.
 
 Este README assume que voce nao mexe com codigo. Siga na ordem.
 
@@ -19,9 +21,8 @@ Este README assume que voce nao mexe com codigo. Siga na ordem.
   repositorio a cada execucao — todo voo encontrado fica registrado, nao so
   o que aparece nas mensagens.
 - Alertas completos usando esse historico (teto de preco, queda percentual,
-  novo menor preco) e resumo diario com o melhor preco ja visto. Ver a secao
-  "Alertas e resumo diario" abaixo — o comportamento de quando o bot manda
-  mensagem mudou nesta fase.
+  novo menor preco), sinalizados dentro da mensagem de detalhe. Ver a secao
+  "Detalhe, alertas e resumo" abaixo.
 - Dashboard publico com grafico do menor preco por dia e por destino:
   **<https://alexandre-avelino.github.io/bot-passagens/>** (ver secao
   "Dashboard" abaixo).
@@ -110,20 +111,17 @@ pip install -r requirements.txt
 
 export TELEGRAM_BOT_TOKEN="cole_o_token_aqui"
 export TELEGRAM_CHAT_ID="cole_o_chat_id_aqui"
-export FORCAR_RESUMO=true   # forca o resumo diario neste teste manual, independente do horario
 
 python -m bot_passagens.main
 ```
 
-Se tudo estiver certo, voce recebe uma mensagem no Telegram com as janelas
-mais baratas encontradas (o resumo diario, por causa do `FORCAR_RESUMO=true`
-acima). **Isso marca a Fase 1 como pronta.**
+Se tudo estiver certo, voce recebe **duas mensagens** no Telegram: o
+detalhe das janelas mais baratas e o resumo. **Isso marca a Fase 1 como
+pronta.**
 
 Depois disso, o mesmo vai acontecer sozinho, automaticamente, pelo cron
-externo (Passo 7) — sem precisar deixar nenhum computador ligado. Sem o
-`FORCAR_RESUMO=true`, o bot decide sozinho se e resumo diario com base no
-horario local de Cuiaba (madrugada/manha = resumo; resto do dia = so alerta
-se disparar alguma regra, ver secao abaixo).
+externo (Passo 7) — sem precisar deixar nenhum computador ligado, 2x por
+dia, sempre as duas mensagens juntas.
 
 ## Passo 7 — Cron externo (obrigatorio: e o unico agendador usado)
 
@@ -202,11 +200,16 @@ usuario/repositorio, o link muda para
 nada alem do que ja esta no workflow, GitHub Pages atualiza sozinho a cada
 push no `docs/index.html`.
 
-## Alertas e resumo diario
+## Detalhe, alertas e resumo
 
-A cada execucao o bot avalia, para cada janela de datas, se alguma regra do
-`config.yaml` bateu (comparando com o que ja estava no historico *antes*
-desta execucao):
+Toda execucao (2x por dia) manda **sempre duas mensagens** no Telegram,
+nunca so uma e nunca nenhuma:
+
+**1. Detalhe** — as 3 janelas mais baratas encontradas nessa execucao, cada
+uma com preco, horario, link e a comparacao com a media geral dos ultimos
+30 dias (todas as rotas monitoradas juntas). Alem disso, o bot avalia se
+cada janela bate alguma regra do `config.yaml` (comparando com o que ja
+estava no historico *antes* desta execucao):
 
 - preco menor ou igual a `alertas.preco_maximo`;
 - queda de `alertas.queda_percentual`% ou mais desde a ultima vez que essa
@@ -214,20 +217,12 @@ desta execucao):
 - novo menor preco ja visto para essa janela especifica (se
   `alertas.novo_menor_preco: true`).
 
-Se pelo menos uma bateu, chega um **alerta imediato** no Telegram — com rota,
-datas, preco, o motivo do alerta e a comparacao com a media dos precos dessa
-janela nos ultimos 30 dias.
+Se alguma regra bateu, aquela janela ganha um selo 🚨 na mensagem de
+detalhe, com o motivo especifico logo abaixo.
 
-Alem disso, a execucao das ~8h (horario de Cuiaba) sempre manda um
-**resumo diario** com as 3 janelas mais baratas do dia e o menor preco ja
-registrado em todo o historico, independente de ter batido alguma regra.
-
-**Importante**: se nao bateu nenhuma regra E a execucao nao e a das 8h
-(ou seja, a execucao das ~20h na maioria dos dias), **o bot nao manda nada
-no Telegram**. Isso e o comportamento esperado, nao um bug — significa que
-os precos nao mudaram o suficiente para valer um aviso. Se quiser conferir
-que o bot rodou mesmo assim, os logs de cada execucao ficam em
-**Actions** no GitHub.
+**2. Resumo** — as mesmas 3 janelas mais baratas, so que num formato mais
+enxuto, mais o menor preco ja registrado em todo o historico e quantas
+janelas foram verificadas nessa execucao.
 
 ## Rodar os testes automatizados
 

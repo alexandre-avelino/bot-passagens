@@ -209,3 +209,39 @@ def test_metadados_obter_e_definir(tmp_path):
         assert historico.obter_metadado(conn, "ultimo_aviso_erro") == "2026-07-14"
     finally:
         conn.close()
+
+
+def test_janelas_mais_baratas_recentes_usa_so_a_ultima_leva(tmp_path):
+    caminho = str(tmp_path / "historico.db")
+    conn = historico.conectar(caminho)
+    try:
+        antiga = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        recente = datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc)
+        # leva antiga tinha algo bem mais barato, mas nao deve ser considerada
+        historico.registrar_voos(conn, [_voo(100.0, destino="GRU", ida=date(2026, 10, 1), volta=date(2026, 10, 6))], timestamp=antiga)
+        historico.registrar_voos(
+            conn,
+            [
+                _voo(700.0, destino="GRU", ida=date(2026, 10, 3), volta=date(2026, 10, 8)),
+                _voo(600.0, destino="CGH", ida=date(2026, 10, 5), volta=date(2026, 10, 10)),
+                _voo(900.0, destino="GRU", ida=date(2026, 10, 6), volta=date(2026, 10, 11)),
+            ],
+            timestamp=recente,
+        )
+
+        janelas = historico.janelas_mais_baratas_recentes(conn, "CGB", quantidade=2)
+        assert janelas == [
+            {"destino": "CGH", "ida": date(2026, 10, 5), "volta": date(2026, 10, 10)},
+            {"destino": "GRU", "ida": date(2026, 10, 3), "volta": date(2026, 10, 8)},
+        ]
+    finally:
+        conn.close()
+
+
+def test_janelas_mais_baratas_recentes_sem_historico(tmp_path):
+    caminho = str(tmp_path / "historico.db")
+    conn = historico.conectar(caminho)
+    try:
+        assert historico.janelas_mais_baratas_recentes(conn, "CGB", quantidade=3) == []
+    finally:
+        conn.close()

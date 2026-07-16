@@ -5,8 +5,17 @@ on:
   # provou ser pouco confiavel (nao disparava, e quando passou a disparar
   # foi com ~2h de atraso, duplicando execucoes junto com o cron externo).
   # O disparo real e feito por um cron externo (cron-job.org, ver README
-  # Passo 7) chamando este workflow_dispatch 2x/dia.
-  workflow_dispatch: {}
+  # Passo 7) chamando este workflow_dispatch: 2x/dia em modo completo, e
+  # opcionalmente mais vezes ao dia em modo rapido (Passo 8).
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "completo (2x/dia, detalhe+resumo) ou rapido (checagem leve, so alerta)"
+        type: choice
+        options:
+          - completo
+          - rapido
+        default: completo
 
 permissions:
   contents: write
@@ -30,6 +39,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MODO_EXECUCAO: ${{ inputs.modo }}
         run: python -m bot_passagens.main
 
       - name: Salvar historico de precos e dashboard no repositorio

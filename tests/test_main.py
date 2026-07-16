@@ -1,6 +1,7 @@
 from datetime import date
 
-from bot_passagens.main import _formatar_mensagem_detalhe
+from bot_passagens.alerta import Alerta
+from bot_passagens.main import _formatar_mensagem_alerta_rapido, _formatar_mensagem_detalhe
 from bot_passagens.models import Voo
 
 
@@ -50,3 +51,22 @@ def test_detalhe_direcao_acima_quando_preco_maior_que_media():
     voo = _voo(1000.0)
     texto = _formatar_mensagem_detalhe([voo], {}, media_geral=700.0)
     assert "acima da média geral" in texto
+
+
+def test_alerta_rapido_mostra_apenas_as_janelas_disparadas():
+    alertas = [
+        Alerta(voo=_voo(650.0), motivos=["Novo menor preço já visto para essa janela"], media_recente=700.0),
+    ]
+    texto = _formatar_mensagem_alerta_rapido(alertas)
+    assert "Alerta rápido" in texto
+    assert "Novo menor preço já visto para essa janela" in texto
+    assert "R$ 650,00" in texto
+
+
+def test_alerta_rapido_ordena_por_preco():
+    alertas = [
+        Alerta(voo=_voo(900.0, destino="GRU"), motivos=["Abaixo do teto configurado (R$ 1.000,00)"], media_recente=None),
+        Alerta(voo=_voo(600.0, destino="CGH"), motivos=["Abaixo do teto configurado (R$ 1.000,00)"], media_recente=None),
+    ]
+    texto = _formatar_mensagem_alerta_rapido(alertas)
+    assert texto.index("R$ 600,00") < texto.index("R$ 900,00")

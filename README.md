@@ -23,6 +23,8 @@ Este README assume que voce nao mexe com codigo. Siga na ordem.
 - Alertas completos usando esse historico (teto de preco, queda percentual,
   novo menor preco), sinalizados dentro da mensagem de detalhe. Ver a secao
   "Detalhe, alertas e resumo" abaixo.
+- Checagem rapida opcional entre as execucoes completas, revisitando so as
+  janelas mais baratas do momento (ver "Passo 8").
 - Dashboard publico com grafico do menor preco por dia e por destino:
   **<https://alexandre-avelino.github.io/bot-passagens/>** (ver secao
   "Dashboard" abaixo).
@@ -169,6 +171,33 @@ Sem esse cron externo configurado e ativo, o bot **nao roda sozinho** --
 so dispara quando voce (ou eu) rodar manualmente pela aba Actions. Por
 isso esse passo deixou de ser "recomendado" e virou obrigatorio pra
 automacao funcionar.
+
+## Passo 8 — Checagem rapida (opcional)
+
+Alem das 2 execucoes completas por dia (8h e 20h, que varrem todas as
+janelas monitoradas), dá pra configurar checagens extras e mais leves ao
+longo do dia, que revisitam so as `QUANTIDADE_JANELAS_RAPIDAS` (3 por
+padrao) janelas que estavam mais baratas na ultima execucao completa. Essa
+checagem **so manda mensagem se algo bater uma regra de alerta** (mostrando
+so aquela passagem, sem detalhe/resumo completo) -- do contrario fica
+em silencio.
+
+**Importante sobre volume de buscas**: cada checagem rapida ainda faz
+buscas reais no Google Voos (3 por padrao), entao rodar isso com muita
+frequencia aumenta o risco de rate limit -- o mesmo motivo que nos fez
+reduzir de 5x pra 2x/dia la no inicio. Recomendo comecar com algo
+espacado (ex: a cada 2h, so durante o dia) e ajustar conforme a
+experiencia.
+
+Pra configurar, crie **mais um cronjob** no cron-job.org (igual ao do
+Passo 7, mesmo token e mesma URL), mudando so:
+
+- **Body** (JSON): `{"ref":"main","inputs":{"modo":"rapido"}}`
+- **Schedule**: a frequencia que voce quiser (ex: a cada 2 horas, das 8h
+  as 22h horario de Cuiaba)
+
+Se quiser mudar quantas janelas a checagem rapida revisita, ajuste
+`QUANTIDADE_JANELAS_RAPIDAS` em `bot_passagens/main.py`.
 
 ## Historico de precos
 

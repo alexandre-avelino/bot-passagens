@@ -149,6 +149,34 @@ def menor_preco_geral(conn: sqlite3.Connection, origem: str) -> Optional[dict]:
     return {"origem": origem, "destino": destino, "ida": ida, "volta": volta, "preco": preco}
 
 
+def janelas_mais_baratas_recentes(conn: sqlite3.Connection, origem: str, quantidade: int) -> list:
+    """As `quantidade` janelas (destino, ida, volta) mais baratas na ultima leva de buscas
+    registrada para essa origem -- usado pela checagem rapida pra saber o que vigiar sem
+    precisar varrer todas as janelas monitoradas de novo.
+    """
+    ultimo_timestamp = conn.execute(
+        "SELECT MAX(timestamp) FROM buscas WHERE origem = ?", (origem,)
+    ).fetchone()[0]
+    if ultimo_timestamp is None:
+        return []
+
+    linhas = conn.execute(
+        """
+        SELECT destino, ida, volta, MIN(preco) AS preco
+        FROM buscas
+        WHERE origem = ? AND timestamp = ?
+        GROUP BY destino, ida, volta
+        ORDER BY preco ASC
+        LIMIT ?
+        """,
+        (origem, ultimo_timestamp, quantidade),
+    ).fetchall()
+    return [
+        {"destino": destino, "ida": date.fromisoformat(ida), "volta": date.fromisoformat(volta)}
+        for destino, ida, volta, _preco in linhas
+    ]
+
+
 def obter_metadado(conn: sqlite3.Connection, chave: str) -> Optional[str]:
     linha = conn.execute("SELECT valor FROM metadados WHERE chave = ?", (chave,)).fetchone()
     return linha[0] if linha else None

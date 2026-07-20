@@ -154,9 +154,13 @@ def _formatar_mensagem_resumo(
         if menor_geral is not None:
             ida_fmt = date.fromisoformat(menor_geral["ida"]).strftime("%d/%m")
             volta_fmt = date.fromisoformat(menor_geral["volta"]).strftime("%d/%m")
+            encontrado_em_fmt = (
+                datetime.fromisoformat(menor_geral["encontrado_em"]).astimezone(FUSO_HORARIO_LOCAL).strftime("%d/%m/%Y")
+            )
             linhas.append(
                 f"🏆 Menor preço já registrado: *{formatar_preco(menor_geral['preco'])}* — "
-                f"{menor_geral['origem']} → {menor_geral['destino']} · {ida_fmt} → {volta_fmt}"
+                f"{menor_geral['origem']} → {menor_geral['destino']} · {ida_fmt} → {volta_fmt} "
+                f"(encontrado em {encontrado_em_fmt})"
             )
             linhas.append("")
 

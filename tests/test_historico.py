@@ -180,7 +180,10 @@ def test_menor_preco_geral_entre_rotas_diferentes(tmp_path):
     caminho = str(tmp_path / "historico.db")
     conn = historico.conectar(caminho)
     try:
-        historico.registrar_voos(conn, [_voo(900.0, destino="GRU"), _voo(550.0, destino="CGH")])
+        momento = datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc)
+        historico.registrar_voos(
+            conn, [_voo(900.0, destino="GRU"), _voo(550.0, destino="CGH")], timestamp=momento
+        )
         resultado = historico.menor_preco_geral(conn, "CGB")
         assert resultado == {
             "origem": "CGB",
@@ -188,6 +191,7 @@ def test_menor_preco_geral_entre_rotas_diferentes(tmp_path):
             "ida": "2026-10-03",
             "volta": "2026-10-08",
             "preco": 550.0,
+            "encontrado_em": momento.isoformat(),
         }
     finally:
         conn.close()

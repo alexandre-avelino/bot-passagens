@@ -144,13 +144,20 @@ def media_precos_recentes(
 def menor_preco_geral(conn: sqlite3.Connection, origem: str) -> Optional[dict]:
     """O menor preco ja registrado entre todas as rotas/janelas monitoradas para essa origem."""
     linha = conn.execute(
-        "SELECT destino, ida, volta, preco FROM buscas WHERE origem = ? ORDER BY preco ASC LIMIT 1",
+        "SELECT destino, ida, volta, preco, timestamp FROM buscas WHERE origem = ? ORDER BY preco ASC LIMIT 1",
         (origem,),
     ).fetchone()
     if linha is None:
         return None
-    destino, ida, volta, preco = linha
-    return {"origem": origem, "destino": destino, "ida": ida, "volta": volta, "preco": preco}
+    destino, ida, volta, preco, timestamp = linha
+    return {
+        "origem": origem,
+        "destino": destino,
+        "ida": ida,
+        "volta": volta,
+        "preco": preco,
+        "encontrado_em": timestamp,
+    }
 
 
 def janelas_mais_baratas_recentes(conn: sqlite3.Connection, origem: str, quantidade: int) -> list:

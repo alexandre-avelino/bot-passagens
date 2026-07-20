@@ -120,19 +120,23 @@ def ultima_leitura_janela(conn: sqlite3.Connection, origem: str, destino: str, i
     return linha[0] if linha and linha[0] is not None else None
 
 
-def media_geral_recente(conn: sqlite3.Connection, origem: str, desde: datetime) -> Optional[float]:
-    """Media dos precos de TODAS as rotas/janelas monitoradas para essa origem desde `desde`.
+def media_precos_recentes(
+    conn: sqlite3.Connection, origem: str, destino: str, ida: date, volta: date, desde: datetime
+) -> Optional[float]:
+    """Media dos precos registrados para essa janela especifica (mesma rota e mesmas
+    datas de ida/volta) desde `desde` (ex.: ultimos 30 dias).
 
-    Deliberadamente nao filtra por destino/ida/volta: uma janela especifica
-    tem poucos registros e preco instavel (baixa disponibilidade em algumas
-    datas), o que fazia "% abaixo da media" enganoso (ex.: uma passagem de
-    R$1.070 aparentando ser uma pechincha so porque aquela janela especifica
-    costuma custar ainda mais). A media geral reflete melhor "isso e barato
-    dado tudo que venho vendo", que e o que importa na hora de comparar.
+    Deliberadamente especifica por janela, nao geral: uma media que mistura
+    rotas muito diferentes (ex.: uma que costuma ser barata com outra que as
+    vezes dispara de preco) produz um numero que nao ajuda a dizer se ESSA
+    janela em particular esta boa ou nao.
     """
     linha = conn.execute(
-        "SELECT AVG(preco) FROM buscas WHERE origem = ? AND timestamp >= ?",
-        (origem, desde.isoformat()),
+        """
+        SELECT AVG(preco) FROM buscas
+        WHERE origem = ? AND destino = ? AND ida = ? AND volta = ? AND timestamp >= ?
+        """,
+        (origem, destino, ida.isoformat(), volta.isoformat(), desde.isoformat()),
     ).fetchone()
     return linha[0] if linha and linha[0] is not None else None
 

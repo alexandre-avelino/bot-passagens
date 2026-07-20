@@ -34,7 +34,6 @@ def avaliar(conn: sqlite3.Connection, config_alertas: Alertas, todos_os_voos: Li
 
     desde = agora - timedelta(days=DIAS_MEDIA_RECENTE)
     alertas: List[Alerta] = []
-    media_geral_por_origem: Dict[str, Optional[float]] = {}
 
     for (origem, destino, ida, volta), voos_da_janela in grupos.items():
         mais_barato = min(voos_da_janela, key=lambda v: v.preco)
@@ -57,8 +56,7 @@ def avaliar(conn: sqlite3.Connection, config_alertas: Alertas, todos_os_voos: Li
                 motivos.append("Novo menor preço já visto para essa janela")
 
         if motivos:
-            if origem not in media_geral_por_origem:
-                media_geral_por_origem[origem] = historico.media_geral_recente(conn, origem, desde)
-            alertas.append(Alerta(voo=mais_barato, motivos=motivos, media_recente=media_geral_por_origem[origem]))
+            media_recente = historico.media_precos_recentes(conn, origem, destino, ida, volta, desde)
+            alertas.append(Alerta(voo=mais_barato, motivos=motivos, media_recente=media_recente))
 
     return alertas

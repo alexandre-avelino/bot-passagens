@@ -21,36 +21,50 @@ def _voo(preco: float, destino: str = "GRU", ida: date = date(2026, 10, 3), volt
 
 
 def test_detalhe_sem_voos():
-    texto = _formatar_mensagem_detalhe([], {}, media_geral=None)
+    texto = _formatar_mensagem_detalhe([], {}, {})
     assert "Nenhum voo encontrado" in texto
 
 
 def test_detalhe_sem_motivos_nao_tem_selo_de_alerta():
     voo = _voo(600.0)
-    texto = _formatar_mensagem_detalhe([voo], {}, media_geral=700.0)
+    medias = {(voo.destino, voo.ida, voo.volta): 700.0}
+    texto = _formatar_mensagem_detalhe([voo], {}, medias)
     assert "🚨" not in texto
-    assert "abaixo da média geral" in texto
+    assert "abaixo da média dessa janela" in texto
 
 
 def test_detalhe_com_motivo_mostra_selo_e_motivo():
     voo = _voo(600.0, destino="CGH", ida=date(2026, 10, 5), volta=date(2026, 10, 10))
-    motivos_por_janela = {("CGH", date(2026, 10, 5), date(2026, 10, 10)): ["Novo menor preço já visto para essa janela"]}
-    texto = _formatar_mensagem_detalhe([voo], motivos_por_janela, media_geral=700.0)
+    chave = ("CGH", date(2026, 10, 5), date(2026, 10, 10))
+    motivos_por_janela = {chave: ["Novo menor preço já visto para essa janela"]}
+    medias = {chave: 700.0}
+    texto = _formatar_mensagem_detalhe([voo], motivos_por_janela, medias)
     assert "🚨" in texto
     assert "Novo menor preço já visto para essa janela" in texto
 
 
 def test_detalhe_sem_media_nao_quebra():
     voo = _voo(600.0)
-    texto = _formatar_mensagem_detalhe([voo], {}, media_geral=None)
-    assert "média geral" not in texto
+    texto = _formatar_mensagem_detalhe([voo], {}, {})
+    assert "média" not in texto
     assert "R$ 600,00" in texto
+
+
+def test_detalhe_media_e_por_janela_nao_compartilhada():
+    voo1 = _voo(600.0, destino="GRU")
+    voo2 = _voo(1000.0, destino="CGH", ida=date(2026, 11, 1), volta=date(2026, 11, 6))
+    medias = {(voo1.destino, voo1.ida, voo1.volta): 700.0}  # so voo1 tem media conhecida
+    texto = _formatar_mensagem_detalhe([voo1, voo2], {}, medias)
+    assert "abaixo da média dessa janela" in texto
+    # voo2 nao deve ganhar a media de voo1 -- so aparece uma linha de media no total
+    assert texto.count("📊") == 1
 
 
 def test_detalhe_direcao_acima_quando_preco_maior_que_media():
     voo = _voo(1000.0)
-    texto = _formatar_mensagem_detalhe([voo], {}, media_geral=700.0)
-    assert "acima da média geral" in texto
+    medias = {(voo.destino, voo.ida, voo.volta): 700.0}
+    texto = _formatar_mensagem_detalhe([voo], {}, medias)
+    assert "acima da média dessa janela" in texto
 
 
 def test_alerta_rapido_mostra_apenas_as_janelas_disparadas():

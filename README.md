@@ -235,10 +235,10 @@ Toda execucao (2x por dia) manda **sempre duas mensagens** no Telegram,
 nunca so uma e nunca nenhuma:
 
 **1. Detalhe** — as 3 janelas mais baratas encontradas nessa execucao, cada
-uma com preco, horario, link e a comparacao com a media geral dos ultimos
-30 dias (todas as rotas monitoradas juntas). Alem disso, o bot avalia se
-cada janela bate alguma regra do `config.yaml` (comparando com o que ja
-estava no historico *antes* desta execucao):
+uma com preco, horario, link e a comparacao com a media de preco **dessa
+mesma janela especifica** (mesma rota e mesmas datas) nos ultimos 30 dias.
+Alem disso, o bot avalia se cada janela bate alguma regra do `config.yaml`
+(comparando com o que ja estava no historico *antes* desta execucao):
 
 - preco menor ou igual a `alertas.preco_maximo`;
 - queda de `alertas.queda_percentual`% ou mais desde a ultima vez que essa
@@ -247,7 +247,9 @@ estava no historico *antes* desta execucao):
   `alertas.novo_menor_preco: true`).
 
 Se alguma regra bateu, aquela janela ganha um selo 🚨 na mensagem de
-detalhe, com o motivo especifico logo abaixo.
+detalhe, com o motivo especifico logo abaixo. Se uma janela ainda nao tem
+historico proprio (primeira vez que aparece), a linha de comparacao com a
+media simplesmente nao aparece pra ela.
 
 **2. Resumo** — as mesmas 3 janelas mais baratas, so que num formato mais
 enxuto, mais o menor preco ja registrado em todo o historico e quantas

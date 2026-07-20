@@ -111,26 +111,28 @@ def _bloco_voo(rotulo: str, voo: Voo) -> str:
 def _formatar_mensagem_detalhe(
     voos_top: List[Voo],
     motivos_por_janela: Dict[Tuple[str, date, date], List[str]],
-    media_geral: Optional[float],
+    medias_por_janela: Dict[Tuple[str, date, date], Optional[float]],
 ) -> str:
     if not voos_top:
         return "📋 *Detalhe das buscas*\n\n🤷 Nenhum voo encontrado nas janelas monitoradas desta vez."
 
     linhas = [f"📋 *Detalhe das buscas* — top {len(voos_top)} janelas mais baratas", ""]
     for i, voo in enumerate(voos_top):
-        motivos = motivos_por_janela.get((voo.destino, voo.ida, voo.volta), [])
+        chave_janela = (voo.destino, voo.ida, voo.volta)
+        motivos = motivos_por_janela.get(chave_janela, [])
         rotulo = _rotulo_posicao(i)
         if motivos:
             rotulo = f"🚨 {rotulo}"
         linhas.append(_bloco_voo(rotulo, voo))
         for motivo in motivos:
             linhas.append(f"    • {motivo}")
-        if media_geral is not None:
-            diferenca_pct = (media_geral - voo.preco) / media_geral * 100
+        media_janela = medias_por_janela.get(chave_janela)
+        if media_janela is not None:
+            diferenca_pct = (media_janela - voo.preco) / media_janela * 100
             direcao = "abaixo" if diferenca_pct >= 0 else "acima"
             linhas.append(
-                f"    📊 {abs(diferenca_pct):.0f}% {direcao} da média geral dos últimos 30 dias "
-                f"({formatar_preco(media_geral)})"
+                f"    📊 {abs(diferenca_pct):.0f}% {direcao} da média dessa janela nos últimos 30 dias "
+                f"({formatar_preco(media_janela)})"
             )
         linhas.append("")
     return "\n".join(linhas).rstrip()
@@ -205,15 +207,20 @@ def _executar_modo_completo(
     motivos_por_janela = {
         (item.voo.destino, item.voo.ida, item.voo.volta): item.motivos for item in alertas_disparados
     }
+
+    voos_top = sorted(todos_os_voos, key=lambda v: v.preco)[:TOP_N]
     desde = agora - timedelta(days=alerta.DIAS_MEDIA_RECENTE)
-    media_geral = historico.media_geral_recente(conn, config.origem, desde)
+    medias_por_janela = {
+        (voo.destino, voo.ida, voo.volta): historico.media_precos_recentes(
+            conn, voo.origem, voo.destino, voo.ida, voo.volta, desde
+        )
+        for voo in voos_top
+    }
 
     historico.registrar_voos(conn, todos_os_voos, timestamp=agora)
     dashboard.gerar_dashboard(conn, config.origem)
 
-    voos_top = sorted(todos_os_voos, key=lambda v: v.preco)[:TOP_N]
-
-    mensagem_detalhe = _formatar_mensagem_detalhe(voos_top, motivos_por_janela, media_geral)
+    mensagem_detalhe = _formatar_mensagem_detalhe(voos_top, motivos_por_janela, medias_por_janela)
     enviar_mensagem_longa(token, chat_id, mensagem_detalhe)
     print(mensagem_detalhe)
 

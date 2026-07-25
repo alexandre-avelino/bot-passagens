@@ -56,8 +56,9 @@ def carregar_config(caminho: str = "config.yaml") -> Config:
     if not dados["destinos"]:
         raise ValueError("config.yaml precisa de pelo menos um destino em 'destinos'")
 
-    if not dados["dias_obrigatorios"]:
-        raise ValueError("config.yaml precisa de pelo menos um dia em 'dias_obrigatorios'")
+    # dias_obrigatorios pode ser vazio: nesse caso nenhuma data especifica e
+    # exigida, e o gerador de combinacoes (bot_passagens/dates.py) produz
+    # toda janela dentro do periodo que respeite a duracao configurada.
 
     duracao = Duracao(
         minima=int(dados["duracao"]["minima"]),
@@ -77,7 +78,7 @@ def carregar_config(caminho: str = "config.yaml") -> Config:
         destinos=[str(d).upper() for d in dados["destinos"]],
         periodo_inicio=dados["periodo"]["inicio"],
         periodo_fim=dados["periodo"]["fim"],
-        dias_obrigatorios=list(dados["dias_obrigatorios"]),
+        dias_obrigatorios=list(dados["dias_obrigatorios"] or []),
         margem_adjacente=int(dados["margem_adjacente"]),
         duracao=duracao,
         passageiros=int(dados["passageiros"]),

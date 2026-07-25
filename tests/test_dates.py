@@ -137,3 +137,22 @@ def test_periodo_invertido_leva_a_erro():
             duracao_minima=4,
             duracao_maxima=7,
         )
+
+
+def test_sem_dia_obrigatorio_gera_toda_janela_dentro_da_duracao():
+    # dias_obrigatorios vazio: nenhuma data especifica exigida, so a duracao importa.
+    combinacoes = gerar_combinacoes(
+        periodo_inicio=date(2026, 11, 9),
+        periodo_fim=date(2026, 11, 30),
+        dias_obrigatorios=[],
+        margem_adjacente=1,
+        duracao_minima=5,
+        duracao_maxima=7,
+    )
+    assert len(combinacoes) > 0
+    for janela in combinacoes:
+        assert 5 <= janela.duracao <= 7
+        assert date(2026, 11, 9) <= janela.ida
+        assert janela.volta <= date(2026, 11, 30)
+    assert Janela(ida=date(2026, 11, 9), volta=date(2026, 11, 14)) in combinacoes
+    assert Janela(ida=date(2026, 11, 23), volta=date(2026, 11, 30)) in combinacoes

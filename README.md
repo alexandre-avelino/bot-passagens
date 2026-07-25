@@ -92,6 +92,12 @@ Abra `config.yaml` e ajuste:
 - `dias_obrigatorios` + `margem_adjacente`: dia(s) que precisam ser passados
   inteiros no destino (nunca dia de embarque/desembarque). `margem_adjacente`
   e quantos dias de folga sao exigidos antes E depois de cada um desses dias.
+  Deixe `dias_obrigatorios: []` (vazio) se nao quiser nenhuma data fixa --
+  nesse caso o bot varre toda janela dentro do `periodo` que bater com a
+  duracao configurada. **Atencao**: sem dia fixo, o numero de janelas
+  monitoradas cresce bastante (mais buscas por execucao) -- se o periodo for
+  longo, considere reduzir os `destinos` ou o proprio `periodo` pra manter
+  o volume de buscas controlado (ver aviso mais abaixo).
 - `duracao.minima` / `duracao.maxima`: duracao da estadia, em dias.
 - `alertas.preco_maximo`: dispara alerta quando algum voo custar isso ou menos.
 - `alertas.queda_percentual`: dispara alerta quando o preco cair esse % ou
@@ -185,16 +191,16 @@ em silencio.
 **Importante sobre volume de buscas**: cada checagem rapida ainda faz
 buscas reais no Google Voos (3 por padrao), entao rodar isso com muita
 frequencia aumenta o risco de rate limit -- o mesmo motivo que nos fez
-reduzir de 5x pra 2x/dia la no inicio. Recomendo comecar com algo
-espacado (ex: a cada 2h, so durante o dia) e ajustar conforme a
-experiencia.
+reduzir de 5x pra 2x/dia la no inicio.
 
 Pra configurar, crie **mais um cronjob** no cron-job.org (igual ao do
 Passo 7, mesmo token e mesma URL), mudando so:
 
 - **Body** (JSON): `{"ref":"main","inputs":{"modo":"rapido"}}`
-- **Schedule**: a frequencia que voce quiser (ex: a cada 2 horas, das 8h
-  as 22h horario de Cuiaba)
+- **Schedule**: a frequencia que voce quiser. Recomendado comecar com algo
+  espacado (ex: 2x/dia, em horarios diferentes do Passo 7, tipo 11h e 17h
+  Cuiaba) e so aumentar a frequencia depois se o volume total de buscas
+  permitir sem dar rate limit.
 
 Se quiser mudar quantas janelas a checagem rapida revisita, ajuste
 `QUANTIDADE_JANELAS_RAPIDAS` em `bot_passagens/main.py`.
@@ -264,13 +270,19 @@ python -m pytest
 
 ## Aviso importante sobre volume de buscas
 
-Com a configuracao padrao (2 destinos, periodo de ~2 semanas, duracao 4-7
-dias), o bot faz cerca de 50 buscas por execucao. O workflow roda 2x por dia
-(08h e 20h, horario de Cuiaba) em vez de 5x, o que da ~100 buscas/dia no
-total -- reduzido de proposito para diminuir o risco de rate limit do Google
-Voos (nao existe um limite oficial publicado, entao isso e uma estimativa
-conservadora, nao uma garantia). Tambem ha uma pausa de ~2,5s entre cada
+Com a configuracao padrao (2 destinos, periodo de ~3 semanas sem dia
+obrigatorio, duracao 5-7 dias), o bot faz cerca de 96 buscas por execucao
+completa. O workflow roda 2x por dia (08h e 20h, horario de Cuiaba) --
+reduzido de proposito, e a checagem rapida opcional (Passo 8) soma pouco
+(poucas janelas por vez). Nao existe um limite oficial publicado pelo
+Google Voos pra requisicoes, entao qualquer numero aqui e uma estimativa
+conservadora, nao uma garantia. Tambem ha uma pausa de ~2,5s entre cada
 busca dentro de uma mesma execucao.
+
+O numero de buscas por execucao depende diretamente de quantas janelas
+`dias_obrigatorios` + `duracao` geram (ver Passo 5) -- sem um dia
+obrigatorio fixo, o periodo inteiro e varrido, o que pode aumentar bastante
+esse numero se o periodo for longo.
 
 Se buscas comecarem a falhar, o bot manda um aviso no Telegram (no maximo 1x
 por dia, mesmo que falhe em varias execucoes seguidas) e sempre registra o

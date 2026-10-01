@@ -1,7 +1,7 @@
 """Leitura e validacao do config.yaml."""
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 from typing import List
 
@@ -22,6 +22,12 @@ class Duracao:
 
 
 @dataclass(frozen=True)
+class HorarioExcluido:
+    inicio: time
+    fim: time
+
+
+@dataclass(frozen=True)
 class Config:
     tipo_viagem: str
     origem: str
@@ -32,6 +38,7 @@ class Config:
     margem_adjacente: int
     duracao: Duracao
     passageiros: int
+    horario_saida_excluido: HorarioExcluido | None
     alertas: Alertas
     resumo_diario: str
 
@@ -78,6 +85,20 @@ def carregar_config(caminho: str = "config.yaml") -> Config:
         novo_menor_preco=bool(dados["alertas"]["novo_menor_preco"]),
     )
 
+    horario_saida_excluido = None
+    dados_horario = dados.get("horario_saida_excluido")
+    if dados_horario:
+        try:
+            inicio = time.fromisoformat(str(dados_horario["inicio"]))
+            fim = time.fromisoformat(str(dados_horario["fim"]))
+        except (KeyError, TypeError, ValueError) as erro:
+            raise ValueError(
+                "horario_saida_excluido precisa ter inicio e fim no formato HH:MM"
+            ) from erro
+        if inicio >= fim:
+            raise ValueError("horario_saida_excluido.inicio precisa ser anterior ao fim")
+        horario_saida_excluido = HorarioExcluido(inicio=inicio, fim=fim)
+
     return Config(
         tipo_viagem=tipo_viagem,
         origem=str(dados["origem"]).upper(),
@@ -88,6 +109,7 @@ def carregar_config(caminho: str = "config.yaml") -> Config:
         margem_adjacente=int(dados["margem_adjacente"]),
         duracao=duracao,
         passageiros=int(dados["passageiros"]),
+        horario_saida_excluido=horario_saida_excluido,
         alertas=alertas,
         resumo_diario=str(dados["resumo_diario"]),
     )

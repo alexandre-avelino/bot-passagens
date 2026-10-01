@@ -18,6 +18,12 @@ duracao:
 
 passageiros: 1
 
+# Voos que saem de madrugada nao entram nas mensagens nem no historico.
+# O fim e exclusivo: 05:59 e excluido; 06:00 volta a ser aceito.
+horario_saida_excluido:
+  inicio: "02:00"
+  fim: "06:00"
+
 alertas:
   preco_maximo: 350        # em R$, somente ida -- dispara alerta imediato quando achar preco <= esse valor
   queda_percentual: 10

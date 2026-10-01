@@ -17,7 +17,7 @@ import os
 import sqlite3
 import sys
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as horario, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
@@ -36,6 +36,25 @@ TOP_N = 3
 QUANTIDADE_JANELAS_RAPIDAS = 3
 MEDALHAS = ["🥇", "🥈", "🥉"]
 FUSO_HORARIO_LOCAL = ZoneInfo("America/Cuiaba")
+
+
+def _filtrar_horario_saida(voos: List[Voo], config: Config) -> List[Voo]:
+    faixa = config.horario_saida_excluido
+    if faixa is None:
+        return voos
+
+    filtrados: List[Voo] = []
+    for voo in voos:
+        try:
+            partida = horario.fromisoformat(voo.partida)
+        except ValueError:
+            # Se o provedor mudar o formato, preservar o resultado e evitar
+            # excluir silenciosamente um voo cujo horario nao foi entendido.
+            filtrados.append(voo)
+            continue
+        if not (faixa.inicio <= partida < faixa.fim):
+            filtrados.append(voo)
+    return filtrados
 
 
 def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
@@ -67,7 +86,7 @@ def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
                     config.origem, destino, janela.ida, janela.volta,
                     config.passageiros, somente_ida=config.tipo_viagem == "somente_ida",
                 )
-                todos_os_voos.extend(voos)
+                todos_os_voos.extend(_filtrar_horario_saida(voos, config))
             except ProviderError as erro:
                 print(f"[aviso] {erro}", file=sys.stderr)
                 erros.append(str(erro))
@@ -87,7 +106,7 @@ def _buscar_janelas_especificas(config: Config, janelas: List[dict]) -> tuple[li
                 config.origem, j["destino"], j["ida"], j["volta"],
                 config.passageiros, somente_ida=config.tipo_viagem == "somente_ida",
             )
-            todos_os_voos.extend(voos)
+            todos_os_voos.extend(_filtrar_horario_saida(voos, config))
         except ProviderError as erro:
             print(f"[aviso] {erro}", file=sys.stderr)
             erros.append(str(erro))

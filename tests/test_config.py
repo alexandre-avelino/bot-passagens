@@ -18,6 +18,9 @@ duracao:
   minima: 5
   maxima: 7
 passageiros: 1
+horario_saida_excluido:
+  inicio: "02:00"
+  fim: "06:00"
 alertas:
   preco_maximo: 500
   queda_percentual: 10
@@ -33,6 +36,8 @@ def test_dias_obrigatorios_vazio_e_aceito(tmp_path):
     config = carregar_config(str(caminho))
     assert config.tipo_viagem == "somente_ida"
     assert config.dias_obrigatorios == []
+    assert config.horario_saida_excluido.inicio.hour == 2
+    assert config.horario_saida_excluido.fim.hour == 6
 
 
 def test_tipo_viagem_antigo_continua_compativel_quando_campo_ausente(tmp_path):

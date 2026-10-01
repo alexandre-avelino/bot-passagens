@@ -1,11 +1,15 @@
 from datetime import date
 
 from bot_passagens.alerta import Alerta
-from bot_passagens.main import _formatar_mensagem_alerta_rapido, _formatar_mensagem_detalhe
+from bot_passagens.config import Alertas, Config, Duracao, HorarioExcluido
+from bot_passagens.main import _filtrar_horario_saida, _formatar_mensagem_alerta_rapido, _formatar_mensagem_detalhe
 from bot_passagens.models import Voo
 
 
-def _voo(preco: float, destino: str = "GRU", ida: date = date(2026, 10, 3), volta: date = date(2026, 10, 8)) -> Voo:
+def _voo(
+    preco: float, destino: str = "GRU", ida: date = date(2026, 10, 3),
+    volta: date = date(2026, 10, 8), partida: str = "08:00",
+) -> Voo:
     return Voo(
         origem="CGB",
         destino=destino,
@@ -14,10 +18,35 @@ def _voo(preco: float, destino: str = "GRU", ida: date = date(2026, 10, 3), volt
         companhia="Gol",
         preco=preco,
         escalas=0,
-        partida="08:00",
+        partida=partida,
         chegada="11:00",
         link="https://exemplo",
     )
+
+
+def _config_com_filtro() -> Config:
+    from datetime import time
+
+    return Config(
+        tipo_viagem="somente_ida", origem="CGB", destinos=["GRU", "CGH"],
+        periodo_inicio=date(2027, 1, 1), periodo_fim=date(2027, 1, 14),
+        dias_obrigatorios=[], margem_adjacente=0, duracao=Duracao(0, 0),
+        passageiros=1, horario_saida_excluido=HorarioExcluido(time(2), time(6)),
+        alertas=Alertas(350, 10, True), resumo_diario="08:00",
+    )
+
+
+def test_filtra_voos_que_saem_entre_02h_e_05h59():
+    voos = [
+        _voo(200, partida="01:59"),
+        _voo(210, partida="02:00"),
+        _voo(220, partida="05:59"),
+        _voo(230, partida="06:00"),
+    ]
+
+    filtrados = _filtrar_horario_saida(voos, _config_com_filtro())
+
+    assert [voo.partida for voo in filtrados] == ["01:59", "06:00"]
 
 
 def test_detalhe_sem_voos():

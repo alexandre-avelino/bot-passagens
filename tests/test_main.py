@@ -25,6 +25,13 @@ def test_detalhe_sem_voos():
     assert "Nenhum voo encontrado" in texto
 
 
+def test_bloco_voo_somente_ida_nao_mostra_noites_nem_seta_de_volta():
+    voo = _voo(300.0, ida=date(2027, 1, 5), volta=date(2027, 1, 5))
+    texto = _formatar_mensagem_detalhe([voo], {}, {})
+    assert "ida em 05/01" in texto
+    assert "noites" not in texto
+
+
 def test_detalhe_sem_motivos_nao_tem_selo_de_alerta():
     voo = _voo(600.0)
     medias = {(voo.destino, voo.ida, voo.volta): 700.0}

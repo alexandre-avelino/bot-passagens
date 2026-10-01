@@ -5,6 +5,7 @@ import pytest
 from bot_passagens.config import carregar_config
 
 CONFIG_BASE = """
+tipo_viagem: somente_ida
 origem: CGB
 destinos:
   - GRU
@@ -30,7 +31,15 @@ def test_dias_obrigatorios_vazio_e_aceito(tmp_path):
     caminho.write_text(CONFIG_BASE.format(dias_obrigatorios="[]"), encoding="utf-8")
 
     config = carregar_config(str(caminho))
+    assert config.tipo_viagem == "somente_ida"
     assert config.dias_obrigatorios == []
+
+
+def test_tipo_viagem_antigo_continua_compativel_quando_campo_ausente(tmp_path):
+    caminho = tmp_path / "config.yaml"
+    texto = CONFIG_BASE.format(dias_obrigatorios="[]").replace("tipo_viagem: somente_ida\n", "")
+    caminho.write_text(texto, encoding="utf-8")
+    assert carregar_config(str(caminho)).tipo_viagem == "ida_volta"
 
 
 def test_dias_obrigatorios_com_data_ainda_funciona(tmp_path):

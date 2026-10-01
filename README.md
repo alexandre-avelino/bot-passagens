@@ -88,6 +88,8 @@ ligado (ver conversa sobre hospedagem) e ainda nao foi implementada.
 Abra `config.yaml` e ajuste:
 
 - `origem` / `destinos`: codigos de aeroporto (IATA), ex: `CGB`, `GRU`, `CGH`.
+- `tipo_viagem`: use `somente_ida` para passagem de ida ou `ida_volta` para
+  viagem completa.
 - `periodo`: janela de datas que o bot vai varrer.
 - `dias_obrigatorios` + `margem_adjacente`: dia(s) que precisam ser passados
   inteiros no destino (nunca dia de embarque/desembarque). `margem_adjacente`
@@ -99,6 +101,7 @@ Abra `config.yaml` e ajuste:
   longo, considere reduzir os `destinos` ou o proprio `periodo` pra manter
   o volume de buscas controlado (ver aviso mais abaixo).
 - `duracao.minima` / `duracao.maxima`: duracao da estadia, em dias.
+  Em `somente_ida`, esses valores sao ignorados.
 - `alertas.preco_maximo`: dispara alerta quando algum voo custar isso ou menos.
 - `alertas.queda_percentual`: dispara alerta quando o preco cair esse % ou
   mais desde a ultima vez que aquela janela foi checada.

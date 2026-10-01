@@ -141,11 +141,25 @@ def media_precos_recentes(
     return linha[0] if linha and linha[0] is not None else None
 
 
-def menor_preco_geral(conn: sqlite3.Connection, origem: str) -> Optional[dict]:
-    """O menor preco ja registrado entre todas as rotas/janelas monitoradas para essa origem."""
+def menor_preco_geral(
+    conn: sqlite3.Connection, origem: str, periodo_inicio: Optional[date] = None,
+    periodo_fim: Optional[date] = None, somente_ida: bool = False,
+) -> Optional[dict]:
+    """O menor preco registrado para a campanha atual."""
+    filtros = ["origem = ?"]
+    parametros: list = [origem]
+    if periodo_inicio is not None:
+        filtros.append("ida >= ?")
+        parametros.append(periodo_inicio.isoformat())
+    if periodo_fim is not None:
+        filtros.append("ida <= ?")
+        parametros.append(periodo_fim.isoformat())
+    if somente_ida:
+        filtros.append("ida = volta")
     linha = conn.execute(
-        "SELECT destino, ida, volta, preco, timestamp FROM buscas WHERE origem = ? ORDER BY preco ASC LIMIT 1",
-        (origem,),
+        "SELECT destino, ida, volta, preco, timestamp FROM buscas WHERE "
+        + " AND ".join(filtros) + " ORDER BY preco ASC LIMIT 1",
+        parametros,
     ).fetchone()
     if linha is None:
         return None

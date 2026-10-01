@@ -18,8 +18,11 @@ class FlightProvider(ABC):
     """
 
     @abstractmethod
-    def buscar(self, origem: str, destino: str, ida: date, volta: date, passageiros: int = 1) -> List[Voo]:
-        """Retorna voos ida+volta normalizados para a rota e datas dadas.
+    def buscar(
+        self, origem: str, destino: str, ida: date, volta: date,
+        passageiros: int = 1, somente_ida: bool = False,
+    ) -> List[Voo]:
+        """Retorna voos normalizados para a rota e datas dadas.
 
         Deve levantar ProviderError em caso de falha (nunca deixar excecoes
         internas da biblioteca vazarem), para que o chamador decida como

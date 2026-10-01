@@ -40,14 +40,21 @@ FUSO_HORARIO_LOCAL = ZoneInfo("America/Cuiaba")
 
 def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
     provider = FastFlightsProvider()
-    janelas: list[Janela] = gerar_combinacoes(
-        periodo_inicio=config.periodo_inicio,
-        periodo_fim=config.periodo_fim,
-        dias_obrigatorios=config.dias_obrigatorios,
-        margem_adjacente=config.margem_adjacente,
-        duracao_minima=config.duracao.minima,
-        duracao_maxima=config.duracao.maxima,
-    )
+    if config.tipo_viagem == "somente_ida":
+        quantidade_dias = (config.periodo_fim - config.periodo_inicio).days + 1
+        janelas = [
+            Janela(ida=config.periodo_inicio + timedelta(days=i), volta=config.periodo_inicio + timedelta(days=i))
+            for i in range(quantidade_dias)
+        ]
+    else:
+        janelas = gerar_combinacoes(
+            periodo_inicio=config.periodo_inicio,
+            periodo_fim=config.periodo_fim,
+            dias_obrigatorios=config.dias_obrigatorios,
+            margem_adjacente=config.margem_adjacente,
+            duracao_minima=config.duracao.minima,
+            duracao_maxima=config.duracao.maxima,
+        )
 
     todos_os_voos: list[Voo] = []
     erros: list[str] = []
@@ -56,7 +63,10 @@ def _buscar_todos_os_voos(config: Config) -> tuple[list[Voo], list[str], int]:
     for destino in config.destinos:
         for janela in janelas:
             try:
-                voos = provider.buscar(config.origem, destino, janela.ida, janela.volta, config.passageiros)
+                voos = provider.buscar(
+                    config.origem, destino, janela.ida, janela.volta,
+                    config.passageiros, somente_ida=config.tipo_viagem == "somente_ida",
+                )
                 todos_os_voos.extend(voos)
             except ProviderError as erro:
                 print(f"[aviso] {erro}", file=sys.stderr)
@@ -73,7 +83,10 @@ def _buscar_janelas_especificas(config: Config, janelas: List[dict]) -> tuple[li
 
     for j in janelas:
         try:
-            voos = provider.buscar(config.origem, j["destino"], j["ida"], j["volta"], config.passageiros)
+            voos = provider.buscar(
+                config.origem, j["destino"], j["ida"], j["volta"],
+                config.passageiros, somente_ida=config.tipo_viagem == "somente_ida",
+            )
             todos_os_voos.extend(voos)
         except ProviderError as erro:
             print(f"[aviso] {erro}", file=sys.stderr)
@@ -98,10 +111,13 @@ def _rotulo_posicao(indice: int) -> str:
 
 
 def _bloco_voo(rotulo: str, voo: Voo) -> str:
-    noites = (voo.volta - voo.ida).days
+    if voo.volta == voo.ida:
+        datas = f"ida em {voo.ida.strftime('%d/%m')}"
+    else:
+        noites = (voo.volta - voo.ida).days
+        datas = f"{voo.ida.strftime('%d/%m')} → {voo.volta.strftime('%d/%m')} ({noites} noites)"
     return (
-        f"{rotulo} {voo.origem} → {voo.destino} · "
-        f"{voo.ida.strftime('%d/%m')} → {voo.volta.strftime('%d/%m')} ({noites} noites)\n"
+        f"{rotulo} {voo.origem} → {voo.destino} · {datas}\n"
         f"💰 *{formatar_preco(voo.preco)}* — {voo.companhia} — {_formatar_escalas(voo.escalas)}\n"
         f"🕐 {voo.partida} → {voo.chegada} (ida)\n"
         f"🔗 [Ver oferta no Google Voos]({voo.link})"
@@ -157,9 +173,13 @@ def _formatar_mensagem_resumo(
             encontrado_em_fmt = (
                 datetime.fromisoformat(menor_geral["encontrado_em"]).astimezone(FUSO_HORARIO_LOCAL).strftime("%d/%m/%Y")
             )
+            datas_recorde = (
+                f"ida em {ida_fmt}" if menor_geral["ida"] == menor_geral["volta"]
+                else f"{ida_fmt} → {volta_fmt}"
+            )
             linhas.append(
                 f"🏆 Menor preço já registrado: *{formatar_preco(menor_geral['preco'])}* — "
-                f"{menor_geral['origem']} → {menor_geral['destino']} · {ida_fmt} → {volta_fmt} "
+                f"{menor_geral['origem']} → {menor_geral['destino']} · {datas_recorde} "
                 f"(encontrado em {encontrado_em_fmt})"
             )
             linhas.append("")
@@ -228,7 +248,10 @@ def _executar_modo_completo(
     enviar_mensagem_longa(token, chat_id, mensagem_detalhe)
     print(mensagem_detalhe)
 
-    menor_geral = historico.menor_preco_geral(conn, config.origem)
+    menor_geral = historico.menor_preco_geral(
+        conn, config.origem, config.periodo_inicio, config.periodo_fim,
+        somente_ida=config.tipo_viagem == "somente_ida",
+    )
     mensagem_resumo = _formatar_mensagem_resumo(voos_top, total_buscas, menor_geral, erros)
     enviar_mensagem_longa(token, chat_id, mensagem_resumo)
     print(mensagem_resumo)

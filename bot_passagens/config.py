@@ -23,6 +23,7 @@ class Duracao:
 
 @dataclass(frozen=True)
 class Config:
+    tipo_viagem: str
     origem: str
     destinos: List[str]
     periodo_inicio: date
@@ -56,6 +57,10 @@ def carregar_config(caminho: str = "config.yaml") -> Config:
     if not dados["destinos"]:
         raise ValueError("config.yaml precisa de pelo menos um destino em 'destinos'")
 
+    tipo_viagem = str(dados.get("tipo_viagem", "ida_volta")).lower()
+    if tipo_viagem not in {"ida_volta", "somente_ida"}:
+        raise ValueError("tipo_viagem precisa ser 'ida_volta' ou 'somente_ida'")
+
     # dias_obrigatorios pode ser vazio: nesse caso nenhuma data especifica e
     # exigida, e o gerador de combinacoes (bot_passagens/dates.py) produz
     # toda janela dentro do periodo que respeite a duracao configurada.
@@ -74,6 +79,7 @@ def carregar_config(caminho: str = "config.yaml") -> Config:
     )
 
     return Config(
+        tipo_viagem=tipo_viagem,
         origem=str(dados["origem"]).upper(),
         destinos=[str(d).upper() for d in dados["destinos"]],
         periodo_inicio=dados["periodo"]["inicio"],

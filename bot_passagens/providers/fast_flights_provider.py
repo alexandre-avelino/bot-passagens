@@ -26,13 +26,16 @@ def _formatar_hora(hora_minuto: Sequence[int]) -> str:
 
 
 class FastFlightsProvider(FlightProvider):
-    def buscar(self, origem: str, destino: str, ida: date, volta: date, passageiros: int = 1) -> List[Voo]:
+    def buscar(
+        self, origem: str, destino: str, ida: date, volta: date,
+        passageiros: int = 1, somente_ida: bool = False,
+    ) -> List[Voo]:
+        trechos = [ff.FlightQuery(date=ida.isoformat(), from_airport=origem, to_airport=destino)]
+        if not somente_ida:
+            trechos.append(ff.FlightQuery(date=volta.isoformat(), from_airport=destino, to_airport=origem))
         query = ff.create_query(
-            flights=[
-                ff.FlightQuery(date=ida.isoformat(), from_airport=origem, to_airport=destino),
-                ff.FlightQuery(date=volta.isoformat(), from_airport=destino, to_airport=origem),
-            ],
-            trip="round-trip",
+            flights=trechos,
+            trip="one-way" if somente_ida else "round-trip",
             seat="economy",
             passengers=ff.Passengers(adults=passageiros),
             currency="BRL",
@@ -47,7 +50,8 @@ class FastFlightsProvider(FlightProvider):
             # Google ou instabilidade de rede podem quebrar de formas variadas.
             # Nunca deixamos isso vazar cru -- o chamador decide como avisar.
             raise ProviderError(
-                f"falha ao consultar fast-flights para {origem}-{destino} ({ida} / {volta}): {erro}"
+                f"falha ao consultar fast-flights para {origem}-{destino} "
+                f"({ida}{'' if somente_ida else f' / {volta}'}): {erro}"
             ) from erro
 
         link = query.url()

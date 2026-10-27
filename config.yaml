@@ -6,8 +6,8 @@ destinos:
   # - VCP  # avaliar incluir; Azul costuma ter bons preços CGB-VCP
 
 periodo:
-  inicio: 2027-01-01
-  fim: 2027-01-14
+  inicio: 2027-01-04
+  fim: 2027-01-11
 
 dias_obrigatorios: []   # vazio = qualquer data dentro do periodo serve, sem dia fixo obrigatorio
 margem_adjacente: 1     # so tem efeito se dias_obrigatorios nao estiver vazio
